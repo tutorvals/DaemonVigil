@@ -1,0 +1,228 @@
+# Daemon Vigil – Design Document
+
+## Overview
+
+Daemon Vigil is a personal AI companion service that proactively checks in with the user via Telegram. Unlike reactive chat interfaces, Daemon Vigil runs on a heartbeat – periodically waking up, assessing context, and *deciding* whether to send a message. It's an agent with discretion, not a dumb timer.
+
+The user is Vals, based in southern France. He benefits from gentle external prompting to stay engaged with tasks and intentions, but dislikes pressure or "shoulds." The tone should be patient, warm, and adaptive.
+
+## Core Behavior
+
+- Service runs a heartbeat every 15-30 minutes (configurable)
+- Each heartbeat: Claude receives current context and conversation history
+- Claude has a tool `send_message` to ping the user via Telegram
+- Claude *decides* whether to use it – may choose silence if appropriate
+- If user doesn't respond, subsequent pings can try different approaches
+- Tone: interested friend/colleague, not productivity app
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Daemon Vigil                      │
+│                                                     │
+│  ┌───────────┐    ┌───────────┐    ┌────────────┐  │
+│  │ Scheduler │───▶│  Claude   │───▶│  Telegram  │  │
+│  │ (15-30m)  │    │   API     │    │    Bot     │  │
+│  └───────────┘    └─────┬─────┘    └─────┬──────┘  │
+│                         │                │         │
+│                         ▼                ▼         │
+│                   ┌───────────────────────┐        │
+│                   │     JSON files        │        │
+│                   │  - messages.json      │        │
+│                   │  - scratchpad.json    │        │
+│                   └───────────────────────┘        │
+└─────────────────────────────────────────────────────┘
+```
+
+## Tech Stack
+
+- **Language:** Python 3.11+
+- **Scheduler:** APScheduler (built into app, not system cron)
+- **Claude API:** anthropic Python SDK
+- **Telegram:** python-telegram-bot library, polling mode (not webhooks)
+- **Persistence:** JSON files, stored in `data/` directory
+- **Config:** `.env` file for secrets, `config.yaml` for behavior settings
+
+## Design Principles
+
+1. **Local/remote parity:** Runs identically on dev laptop and VPS. No platform-specific dependencies.
+2. **Single process:** Scheduler, bot, and logic all run in one `python main.py` invocation.
+3. **Polling mode for Telegram:** Works behind NAT, no need to expose ports.
+4. **Agent discretion:** Claude chooses whether to message, not just what to say.
+
+## Project Structure
+
+```
+daemon-vigil/
+├── main.py              # Entry point, starts scheduler + bot
+├── config.yaml          # Behavior settings (heartbeat interval, etc.)
+├── .env.example         # Template for secrets
+├── .env                  # Actual secrets (gitignored)
+├── requirements.txt
+├── data/
+│   ├── messages.json    # Conversation history (gitignored)
+│   └── scratchpad.json  # Claude's notes (gitignored)
+├── src/
+│   ├── __init__.py
+│   ├── scheduler.py     # APScheduler setup, heartbeat logic
+│   ├── claude.py        # Claude API calls, tool definitions
+│   ├── telegram_bot.py  # Bot setup, message handling
+│   ├── storage.py       # JSON read/write helpers
+│   └── config.py        # Load .env and config.yaml
+└── prompts/
+    └── system.md        # System prompt for Claude
+```
+
+## Data Structure
+
+### messages.json
+```json
+{
+  "messages": [
+    {
+      "timestamp": "2025-12-03T15:30:00Z",
+      "role": "user",
+      "content": "Hey, how's it going?"
+    },
+    {
+      "timestamp": "2025-12-03T15:30:15Z",
+      "role": "assistant",
+      "content": "Going well! Working on anything interesting today?"
+    }
+  ]
+}
+```
+
+### scratchpad.json
+```json
+{
+  "notes": [
+    {
+      "timestamp": "2025-12-03T15:30:00Z",
+      "note": "Vals mentioned starting a new project"
+    }
+  ]
+}
+```
+
+## Claude Tool Definition
+
+Claude receives one tool:
+
+```python
+tools = [
+    {
+        "name": "send_message",
+        "description": "Send a message to Vals via Telegram. Use this to check in, ask how he's doing, offer help, or gently prompt. You may also choose NOT to call this tool if silence is more appropriate (e.g., user just said they're going for a run).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "The message to send"
+                }
+            },
+            "required": ["message"]
+        }
+    }
+]
+```
+
+## System Prompt (summary)
+
+The full prompt will live in `prompts/system.md`. Key elements:
+
+- You are Daemon Vigil, a proactive companion for Vals
+- You run on a heartbeat; each cycle you decide whether to reach out
+- Tone: warm, patient, curious, non-pressuring
+- You have access to conversation history and your own scratchpad
+- You can write notes to scratchpad for future context
+- If user doesn't respond, try different approaches over time
+- No "shoulds", no productivity guilt, no engagement bait questions
+- Be genuinely helpful, adaptive, and present
+
+## Config File (config.yaml)
+
+```yaml
+heartbeat_interval_minutes: 15
+max_context_messages: 50
+telegram_chat_id: "USER_CHAT_ID"  # Set after first message to bot
+claude_model: "claude-sonnet-4-20250514"
+```
+
+## Environment Variables (.env)
+
+```
+ANTHROPIC_API_KEY=sk-ant-...
+TELEGRAM_BOT_TOKEN=123456:ABC...
+```
+
+## Flows
+
+### Startup
+1. Load config and .env
+2. Initialize SQLite (create tables if needed)
+3. Start Telegram bot (polling)
+4. Start APScheduler with heartbeat job
+5. Block on both (asyncio)
+
+### Heartbeat Cycle
+1. Scheduler triggers every N minutes
+2. Load recent messages from DB (last 50 or configurable)
+3. Load scratchpad notes
+4. Build Claude prompt with context
+5. Call Claude API with `send_message` tool available
+6. If Claude calls tool: send message via Telegram, log to DB
+7. If Claude doesn't call tool: log decision (optional), do nothing
+
+### User Message (via Telegram)
+1. Bot receives message
+2. Log to DB as role='user'
+3. Immediately trigger a Claude cycle (not waiting for heartbeat)
+4. Claude responds, logged as role='assistant'
+5. Send response via Telegram
+
+## Implementation Order
+
+1. **Project scaffolding:** Create directory structure, requirements.txt, .env.example
+2. **Config loading:** Implement `src/config.py`
+3. **Storage:** Implement `src/storage.py` with JSON read/write helpers
+4. **Telegram bot:** Implement `src/telegram_bot.py`, verify it can send/receive
+5. **Claude integration:** Implement `src/claude.py` with tool handling
+6. **Scheduler:** Implement `src/scheduler.py` with APScheduler
+7. **Main entry point:** Wire everything together in `main.py`
+8. **System prompt:** Write `prompts/system.md`
+9. **Test locally**
+10. **Deploy to VPS**
+
+## Deployment (Hetzner VPS)
+
+1. Provision smallest Hetzner cloud instance (CX11, ~€3/mo)
+2. SSH in, install Python 3.11+, git
+3. Clone repo
+4. `cp .env.example .env` and fill in secrets
+5. `pip install -r requirements.txt`
+6. Run in tmux/screen: `python main.py`
+7. (Later) Set up systemd service for auto-restart
+
+## Future Enhancements (not v1)
+
+- Web UI for settings and context management
+- Extended thinking for complex conversations
+- Multiple users
+- Scratchpad tool for Claude to write notes during conversation
+- Quiet hours configuration
+- Adaptive heartbeat (more frequent when user is active)
+
+---
+
+## Notes for Implementation
+
+- Use `python-telegram-bot` v20+ (async version)
+- Use `anthropic` SDK v0.18+
+- APScheduler 3.x works fine, use `AsyncIOScheduler`
+- All async: bot polling, scheduler, and Claude calls should play nice together
+- Telegram polling + APScheduler in same asyncio loop
+
+Start with step 1. Get the skeleton running and talking to Telegram before adding Claude.

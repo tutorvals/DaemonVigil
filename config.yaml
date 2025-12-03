@@ -1,0 +1,4 @@
+heartbeat_interval_minutes: 15
+max_context_messages: 50
+telegram_chat_id: null  # Will be set automatically on first message
+claude_model: "claude-sonnet-4-20250514"
