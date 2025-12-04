@@ -119,13 +119,44 @@ def format_usage_report() -> str:
     Returns:
         Formatted string with usage statistics
     """
+    from . import storage
+    from main import DaemonVigil
+
     today_stats = get_usage_stats(1)
     week_stats = get_usage_stats(7)
     month_stats = get_usage_stats(30)
 
     report = "📊 Status Report\n\n"
     report += f"Model: {config.get_claude_model()}\n\n"
-    report += "💰 API Costs:\n"
+
+    # Heartbeat status
+    app = DaemonVigil.get_instance()
+    if app and app.scheduler:
+        status = app.scheduler.get_status()
+        report += "💓 Heartbeat:\n"
+        report += f"State: {'✅ Enabled' if status['enabled'] else '🔇 Disabled'}\n"
+        report += f"Interval: {status['interval_minutes']} minutes\n"
+        if status['next_run']:
+            report += f"Next run: {status['next_run'].strftime('%H:%M:%S UTC')}\n"
+        report += "\n"
+
+    # Context information
+    messages = storage.messages.get_recent_messages()
+    notes = storage.scratchpad.get_notes()
+
+    report += "📚 Context:\n"
+    report += f"Messages in history: {len(messages)}\n"
+    report += f"Scratchpad notes: {len(notes)}\n"
+
+    if notes:
+        last_note = notes[-1]
+        # Truncate if too long
+        note_preview = last_note['note']
+        if len(note_preview) > 80:
+            note_preview = note_preview[:77] + "..."
+        report += f"Last note: {note_preview}\n"
+
+    report += "\n💰 API Costs:\n"
 
     if today_stats["request_count"] == 0:
         report += "No API usage recorded yet\n"
