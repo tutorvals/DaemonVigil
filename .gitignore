@@ -5,6 +5,10 @@
 # Data files
 data/
 
+# Logs
+daemon_vigil.log
+*.log
+
 # Python
 __pycache__/
 *.py[cod]
