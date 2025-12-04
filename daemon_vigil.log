@@ -118,3 +118,164 @@ Available...
 2025-12-04 14:03:49,243 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
 2025-12-04 14:03:57,994 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
 2025-12-04 14:04:08,735 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:04:19,415 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:04:28,060 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:04:38,744 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:04:49,394 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:04:58,144 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:05:08,829 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:05:19,503 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:05:28,211 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:05:38,961 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:05:49,585 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:05:58,289 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:06:09,003 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:06:19,679 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:06:28,342 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:06:39,087 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:06:49,775 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:06:58,430 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:07:09,110 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:07:19,785 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:07:28,518 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:07:39,268 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:07:49,962 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:07:58,567 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:08:09,348 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:08:19,971 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:08:28,649 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:08:39,316 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:08:49,995 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:08:58,741 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:09:09,459 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:09:20,148 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:09:28,822 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:09:39,385 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 409 Conflict"
+2025-12-04 14:09:39,386 - telegram.ext.Updater - ERROR - Exception happened while polling for updates.
+Traceback (most recent call last):
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_utils/networkloop.py", line 134, in network_retry_loop
+    await do_action()
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_utils/networkloop.py", line 127, in do_action
+    action_cb_task.result()
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_updater.py", line 340, in polling_action_cb
+    updates = await self.bot.get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 676, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 4780, in get_updates
+    await self._post(
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 372, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.Conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-12-04 14:09:44,763 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 409 Conflict"
+2025-12-04 14:09:44,764 - telegram.ext.Updater - ERROR - Exception happened while polling for updates.
+Traceback (most recent call last):
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_utils/networkloop.py", line 134, in network_retry_loop
+    await do_action()
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_utils/networkloop.py", line 127, in do_action
+    action_cb_task.result()
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_updater.py", line 340, in polling_action_cb
+    updates = await self.bot.get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 676, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 4780, in get_updates
+    await self._post(
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 372, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.Conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-12-04 14:09:51,136 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 409 Conflict"
+2025-12-04 14:09:51,138 - telegram.ext.Updater - ERROR - Exception happened while polling for updates.
+Traceback (most recent call last):
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_utils/networkloop.py", line 134, in network_retry_loop
+    await do_action()
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_utils/networkloop.py", line 127, in do_action
+    action_cb_task.result()
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_updater.py", line 340, in polling_action_cb
+    updates = await self.bot.get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 676, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 4780, in get_updates
+    await self._post(
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 372, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.Conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-12-04 14:09:55,886 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-12-04 14:09:57,096 - __main__ - INFO - Shutting down Daemon Vigil...
+2025-12-04 14:09:57,097 - src.scheduler - INFO - Stopping scheduler...
+2025-12-04 14:09:57,097 - src.scheduler - INFO - Scheduler stopped
+2025-12-04 14:09:57,097 - src.telegram_bot - INFO - Stopping Telegram bot...
+2025-12-04 14:09:57,097 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-04 14:09:57,099 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 409 Conflict"
+2025-12-04 14:09:57,100 - asyncio - ERROR - Task exception was never retrieved
+future: <Task finished name='Task-178' coro=<Updater._start_polling.<locals>.polling_action_cb() done, defined at /home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_updater.py:338> exception=Conflict('Conflict: terminated by other getUpdates request; make sure that only one bot instance is running')>
+Traceback (most recent call last):
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_updater.py", line 340, in polling_action_cb
+    updates = await self.bot.get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 676, in get_updates
+    updates = await super().get_updates(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 4780, in get_updates
+    await self._post(
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 703, in _post
+    return await self._do_post(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/ext/_extbot.py", line 372, in _do_post
+    return await super()._do_post(
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/_bot.py", line 732, in _do_post
+    result = await request.post(
+             ^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 198, in post
+    result = await self._request_wrapper(
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/tutorvals/claudeCodeLand/daemonVigil/venv/lib/python3.12/site-packages/telegram/request/_baserequest.py", line 375, in _request_wrapper
+    raise exception
+telegram.error.Conflict: Conflict: terminated by other getUpdates request; make sure that only one bot instance is running
+2025-12-04 14:09:57,127 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 14:09:57,128 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-12-04 14:09:57,128 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-04 14:09:57,139 - telegram.ext.Application - INFO - Application.stop() complete
+2025-12-04 14:09:57,141 - src.telegram_bot - INFO - Telegram bot stopped
+2025-12-04 14:09:57,141 - __main__ - INFO - Daemon Vigil stopped
