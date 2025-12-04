@@ -1,0 +1,241 @@
+2025-12-03 21:03:26,148 - __main__ - INFO - Starting Daemon Vigil...
+2025-12-03 21:03:26,207 - src.telegram_bot - INFO - Starting Telegram bot...
+2025-12-03 21:03:26,357 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getMe "HTTP/1.1 200 OK"
+2025-12-03 21:03:26,358 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-03 21:03:26,358 - telegram.ext.Application - INFO - Application started
+2025-12-03 21:03:26,386 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/deleteWebhook "HTTP/1.1 200 OK"
+2025-12-03 21:03:26,388 - src.telegram_bot - INFO - Telegram bot is running
+2025-12-03 21:03:26,394 - src.scheduler - INFO - Starting scheduler with 15 minute interval
+2025-12-03 21:03:26,395 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-03 21:03:26,396 - apscheduler.scheduler - INFO - Added job "HeartbeatScheduler.heartbeat_job" to job store "default"
+2025-12-03 21:03:26,396 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-03 21:03:26,396 - src.scheduler - INFO - Scheduler started
+2025-12-03 21:03:26,396 - __main__ - INFO - Daemon Vigil is running. Press Ctrl+C to stop.
+2025-12-03 21:03:36,495 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:03:43,513 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:03:43,515 - src.telegram_bot - INFO - User message: Hey
+2025-12-03 21:03:43,515 - __main__ - INFO - User message received: Hey...
+2025-12-03 21:03:43,515 - src.claude - INFO - Responding to user message: Hey...
+2025-12-03 21:03:46,510 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 21:03:46,543 - src.claude - INFO - Claude response: Your first message in our conversation was "Hey, t...
+2025-12-03 21:03:46,543 - src.telegram_bot - ERROR - Cannot send message: chat_id not set
+2025-12-03 21:03:56,579 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:04:06,633 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:04:16,661 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:04:17,545 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-12-03 21:04:26,691 - __main__ - INFO - Shutting down Daemon Vigil...
+2025-12-03 21:04:26,691 - src.scheduler - INFO - Stopping scheduler...
+2025-12-03 21:04:26,691 - src.scheduler - INFO - Scheduler stopped
+2025-12-03 21:04:26,691 - src.telegram_bot - INFO - Stopping Telegram bot...
+2025-12-03 21:04:26,692 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-03 21:04:26,692 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:04:26,719 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:04:26,719 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-12-03 21:04:26,720 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-03 21:04:26,730 - telegram.ext.Application - INFO - Application.stop() complete
+2025-12-03 21:04:26,732 - src.telegram_bot - INFO - Telegram bot stopped
+2025-12-03 21:04:26,732 - __main__ - INFO - Daemon Vigil stopped
+2025-12-03 21:05:19,645 - __main__ - INFO - Starting Daemon Vigil...
+2025-12-03 21:05:19,701 - src.telegram_bot - INFO - Starting Telegram bot...
+2025-12-03 21:05:19,959 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getMe "HTTP/1.1 200 OK"
+2025-12-03 21:05:19,959 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-03 21:05:19,960 - telegram.ext.Application - INFO - Application started
+2025-12-03 21:05:20,060 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/deleteWebhook "HTTP/1.1 200 OK"
+2025-12-03 21:05:20,060 - src.telegram_bot - INFO - Telegram bot is running
+2025-12-03 21:05:20,062 - src.scheduler - INFO - Starting scheduler with 15 minute interval
+2025-12-03 21:05:20,063 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-03 21:05:20,063 - apscheduler.scheduler - INFO - Added job "HeartbeatScheduler.heartbeat_job" to job store "default"
+2025-12-03 21:05:20,064 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-03 21:05:20,064 - src.scheduler - INFO - Scheduler started
+2025-12-03 21:05:20,064 - __main__ - INFO - Daemon Vigil is running. Press Ctrl+C to stop.
+2025-12-03 21:05:25,330 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:05:25,332 - src.telegram_bot - INFO - Set telegram_chat_id to 5456272585
+2025-12-03 21:05:25,332 - src.telegram_bot - INFO - User message: Yo
+2025-12-03 21:05:25,333 - __main__ - INFO - User message received: Yo...
+2025-12-03 21:05:25,334 - src.claude - INFO - Responding to user message: Yo...
+2025-12-03 21:05:27,559 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 21:05:27,577 - src.claude - INFO - Claude response: Hey there! What's on your mind?...
+2025-12-03 21:05:27,577 - src.telegram_bot - ERROR - Cannot send message: chat_id not set
+2025-12-03 21:05:37,611 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:05:47,639 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:05:57,666 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:06:07,694 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:06:14,663 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-12-03 21:06:17,723 - __main__ - INFO - Shutting down Daemon Vigil...
+2025-12-03 21:06:17,723 - src.scheduler - INFO - Stopping scheduler...
+2025-12-03 21:06:17,723 - src.scheduler - INFO - Scheduler stopped
+2025-12-03 21:06:17,723 - src.telegram_bot - INFO - Stopping Telegram bot...
+2025-12-03 21:06:17,724 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-03 21:06:17,724 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:06:17,755 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:06:17,756 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-12-03 21:06:17,756 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-03 21:06:17,766 - telegram.ext.Application - INFO - Application.stop() complete
+2025-12-03 21:06:17,767 - src.telegram_bot - INFO - Telegram bot stopped
+2025-12-03 21:06:17,767 - __main__ - INFO - Daemon Vigil stopped
+2025-12-03 21:39:20,119 - __main__ - INFO - Starting Daemon Vigil...
+2025-12-03 21:39:20,176 - src.telegram_bot - INFO - Starting Telegram bot...
+2025-12-03 21:39:20,318 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getMe "HTTP/1.1 200 OK"
+2025-12-03 21:39:20,319 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-03 21:39:20,319 - telegram.ext.Application - INFO - Application started
+2025-12-03 21:39:20,350 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/deleteWebhook "HTTP/1.1 200 OK"
+2025-12-03 21:39:20,351 - src.telegram_bot - INFO - Telegram bot is running
+2025-12-03 21:39:20,353 - src.scheduler - INFO - Starting scheduler with 15 minute interval
+2025-12-03 21:39:20,355 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-03 21:39:20,355 - apscheduler.scheduler - INFO - Added job "HeartbeatScheduler.heartbeat_job" to job store "default"
+2025-12-03 21:39:20,355 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-03 21:39:20,355 - src.scheduler - INFO - Scheduler started
+2025-12-03 21:39:20,355 - __main__ - INFO - Daemon Vigil is running. Press Ctrl+C to stop.
+2025-12-03 21:39:27,077 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:39:27,079 - src.telegram_bot - INFO - User message: Test
+2025-12-03 21:39:27,079 - __main__ - INFO - User message received: Test...
+2025-12-03 21:39:27,079 - src.claude - INFO - Responding to user message: Test...
+2025-12-03 21:39:30,546 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 21:39:30,572 - src.claude - INFO - Claude response: Got it - just testing things out. Everything seems...
+2025-12-03 21:39:30,799 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/sendMessage "HTTP/1.1 200 OK"
+2025-12-03 21:39:30,800 - src.telegram_bot - INFO - Sent message: Got it - just testing things out. Everything seems...
+2025-12-03 21:39:40,461 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:39:40,462 - src.telegram_bot - INFO - User message: Which model is responding?
+2025-12-03 21:39:40,462 - __main__ - INFO - User message received: Which model is responding?...
+2025-12-03 21:39:40,462 - src.claude - INFO - Responding to user message: Which model is responding?...
+2025-12-03 21:39:43,887 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-03 21:39:43,888 - src.claude - INFO - Claude response: I'm Claude (Anthropic's AI), running as your Daemo...
+2025-12-03 21:39:44,050 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/sendMessage "HTTP/1.1 200 OK"
+2025-12-03 21:39:44,051 - src.telegram_bot - INFO - Sent message: I'm Claude (Anthropic's AI), running as your Daemo...
+2025-12-03 21:39:53,925 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:03,874 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:13,965 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:24,069 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:33,971 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:44,082 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:48,118 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-12-03 21:40:54,188 - __main__ - INFO - Shutting down Daemon Vigil...
+2025-12-03 21:40:54,188 - src.scheduler - INFO - Stopping scheduler...
+2025-12-03 21:40:54,188 - src.scheduler - INFO - Scheduler stopped
+2025-12-03 21:40:54,189 - src.telegram_bot - INFO - Stopping Telegram bot...
+2025-12-03 21:40:54,189 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-03 21:40:54,190 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:54,225 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-03 21:40:54,226 - telegram.ext.Application - INFO - Application is stopping. This might take a moment.
+2025-12-03 21:40:54,226 - apscheduler.scheduler - INFO - Scheduler has been shut down
+2025-12-03 21:40:54,237 - telegram.ext.Application - INFO - Application.stop() complete
+2025-12-03 21:40:54,238 - src.telegram_bot - INFO - Telegram bot stopped
+2025-12-03 21:40:54,238 - __main__ - INFO - Daemon Vigil stopped
+2025-12-04 12:35:33,130 - __main__ - INFO - Starting Daemon Vigil...
+2025-12-04 12:35:33,187 - src.telegram_bot - INFO - Starting Telegram bot...
+2025-12-04 12:35:33,334 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getMe "HTTP/1.1 200 OK"
+2025-12-04 12:35:33,335 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-04 12:35:33,336 - telegram.ext.Application - INFO - Application started
+2025-12-04 12:35:33,363 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/deleteWebhook "HTTP/1.1 200 OK"
+2025-12-04 12:35:33,363 - src.telegram_bot - INFO - Telegram bot is running
+2025-12-04 12:35:33,368 - src.scheduler - INFO - Starting scheduler with 15 minute interval
+2025-12-04 12:35:33,369 - apscheduler.scheduler - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2025-12-04 12:35:33,370 - apscheduler.scheduler - INFO - Added job "HeartbeatScheduler.heartbeat_job" to job store "default"
+2025-12-04 12:35:33,370 - apscheduler.scheduler - INFO - Scheduler started
+2025-12-04 12:35:33,370 - src.scheduler - INFO - Scheduler started
+2025-12-04 12:35:33,370 - __main__ - INFO - Daemon Vigil is running. Press Ctrl+C to stop.
+2025-12-04 12:35:42,587 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:35:53,075 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:36:03,548 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:36:10,674 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:36:10,686 - src.telegram_bot - INFO - User message: Sup
+2025-12-04 12:36:10,687 - __main__ - INFO - User message received: Sup...
+2025-12-04 12:36:10,687 - src.claude - INFO - Responding to user message: Sup...
+2025-12-04 12:36:13,479 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-04 12:36:13,507 - src.claude - INFO - Claude response: Not much happening on my end - just keeping an eye...
+2025-12-04 12:36:13,642 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/sendMessage "HTTP/1.1 200 OK"
+2025-12-04 12:36:13,644 - src.telegram_bot - INFO - Sent message: Not much happening on my end - just keeping an eye...
+2025-12-04 12:36:24,077 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:36:34,556 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:36:43,582 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:36:54,014 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:37:04,453 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:37:13,640 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:37:24,082 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:37:34,538 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:37:43,690 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:37:54,137 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:38:04,616 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:38:13,735 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:38:24,193 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:38:34,707 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:38:43,785 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:38:54,231 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:39:04,678 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:39:13,841 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:39:24,282 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:39:34,790 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:39:45,290 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:39:54,344 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:40:04,840 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:40:15,314 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:40:24,389 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:40:34,858 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:40:45,328 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:40:54,434 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:41:04,922 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:41:15,398 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:41:24,494 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:41:35,044 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:41:45,677 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:41:54,520 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:42:05,069 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:42:15,605 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:42:24,593 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:42:35,049 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:42:45,527 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:42:54,648 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:43:05,119 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:43:15,611 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:43:24,691 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:43:35,184 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:43:45,715 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:43:54,735 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:44:05,211 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:44:15,706 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:44:24,786 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:44:35,258 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:44:45,768 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:44:54,837 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:45:05,329 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:45:15,879 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:45:24,887 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:45:35,364 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:45:45,936 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:45:54,958 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:46:05,412 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:46:15,907 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:46:26,424 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:46:35,506 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:46:45,996 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:46:56,487 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:47:05,544 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:47:16,063 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:47:26,618 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:47:35,607 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:47:46,105 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:47:56,598 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:48:05,666 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:48:16,158 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:48:26,651 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:48:35,710 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:48:46,219 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:48:56,727 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:49:05,760 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:49:16,252 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:49:26,751 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:49:35,806 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:49:46,297 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:49:56,795 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:50:05,845 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:50:16,356 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:50:26,897 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:50:33,386 - apscheduler.executors.default - INFO - Running job "HeartbeatScheduler.heartbeat_job (trigger: interval[0:15:00], next run at: 2025-12-04 13:05:33 CET)" (scheduled at 2025-12-04 12:50:33.369686+01:00)
+2025-12-04 12:50:33,386 - src.scheduler - INFO - Heartbeat triggered
+2025-12-04 12:50:33,386 - src.claude - INFO - Processing heartbeat...
+2025-12-04 12:50:41,861 - httpx - INFO - HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2025-12-04 12:50:41,864 - src.claude - INFO - Claude chose not to send a message this cycle
+2025-12-04 12:50:41,864 - apscheduler.executors.default - INFO - Job "HeartbeatScheduler.heartbeat_job (trigger: interval[0:15:00], next run at: 2025-12-04 13:05:33 CET)" executed successfully
+2025-12-04 12:50:41,865 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:50:52,454 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"
+2025-12-04 12:51:03,044 - httpx - INFO - HTTP Request: POST https://api.telegram.org/bot8515832239:AAGC7z8CocVxv7SAQ15u7gnmgHI_26nKqS0/getUpdates "HTTP/1.1 200 OK"

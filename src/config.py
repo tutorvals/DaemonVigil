@@ -26,6 +26,7 @@ with open(CONFIG_FILE, 'r') as f:
 # Environment variables (required)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # Validate required environment variables
 if not ANTHROPIC_API_KEY:
@@ -33,10 +34,14 @@ if not ANTHROPIC_API_KEY:
 if not TELEGRAM_BOT_TOKEN:
     raise ValueError("TELEGRAM_BOT_TOKEN not found in environment variables")
 
+# TELEGRAM_CHAT_ID is optional initially (can be set after first message)
+# But convert to int if present
+if TELEGRAM_CHAT_ID:
+    TELEGRAM_CHAT_ID = int(TELEGRAM_CHAT_ID)
+
 # Config values with defaults
 HEARTBEAT_INTERVAL_MINUTES = config.get("heartbeat_interval_minutes", 15)
 MAX_CONTEXT_MESSAGES = config.get("max_context_messages", 50)
-TELEGRAM_CHAT_ID = config.get("telegram_chat_id")
 CLAUDE_MODEL = config.get("claude_model", "claude-sonnet-4-20250514")
 
 

@@ -5,6 +5,7 @@ from anthropic import Anthropic
 
 from . import config
 from . import storage
+from . import usage_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +100,19 @@ async def process_heartbeat(telegram_bot) -> None:
             tools=TOOLS
         )
 
+        # Track usage and cost
+        usage_data = usage_tracker.calculate_cost(
+            model=config.CLAUDE_MODEL,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens
+        )
+        usage_data["request_type"] = "heartbeat"
+        usage_tracker.log_api_usage(usage_data)
+
+        logger.info(f"API Usage - Input: {response.usage.input_tokens}, "
+                   f"Output: {response.usage.output_tokens}, "
+                   f"Cost: ${usage_data['total_cost']:.6f}")
+
         # Process response
         for block in response.content:
             if block.type == "tool_use" and block.name == "send_message":
@@ -168,6 +182,20 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
             system=full_system_prompt,
             messages=messages
         )
+
+        # Track usage and cost
+        usage_data = usage_tracker.calculate_cost(
+            model=config.CLAUDE_MODEL,
+            input_tokens=response.usage.input_tokens,
+            output_tokens=response.usage.output_tokens
+        )
+        usage_data["request_type"] = "user_response"
+        usage_data["user_message_preview"] = user_message[:50]
+        usage_tracker.log_api_usage(usage_data)
+
+        logger.info(f"API Usage - Input: {response.usage.input_tokens}, "
+                   f"Output: {response.usage.output_tokens}, "
+                   f"Cost: ${usage_data['total_cost']:.6f}")
 
         # Extract text response
         response_text = ""

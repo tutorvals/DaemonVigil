@@ -5,6 +5,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 
 from . import config
 from . import storage
+from . import commands
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +31,7 @@ class TelegramBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command."""
         chat_id = update.effective_chat.id
-
-        # Save chat_id to config if not already set
-        if not config.TELEGRAM_CHAT_ID:
-            config.update_config("telegram_chat_id", chat_id)
-            logger.info(f"Set telegram_chat_id to {chat_id}")
+        logger.info(f"Received /start from chat_id: {chat_id}")
 
         await update.message.reply_text(
             "Hey Vals! Daemon Vigil is online. I'll check in with you periodically."
@@ -45,6 +42,23 @@ class TelegramBot:
         message_text = update.message.text
         chat_id = update.effective_chat.id
 
+        # Check if this is a command (starts with "...")
+        if message_text.startswith("..."):
+            command = message_text[3:].strip()
+            logger.info(f"Command received: {command}")
+
+            # Handle command (don't forward to Claude)
+            handled = await commands.handle_command(command, self, chat_id)
+
+            if handled:
+                logger.info(f"Command '{command}' handled successfully")
+            else:
+                logger.info(f"Unknown command '{command}' - ignoring")
+
+            # Don't log commands to message history or forward to Claude
+            return
+
+        # Not a command - process normally
         # Log the user message
         storage.messages.add_message("user", message_text)
         logger.info(f"User message: {message_text}")
