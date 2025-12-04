@@ -45,14 +45,25 @@ You run on a heartbeat, periodically checking in. You have access to conversatio
 Be warm, patient, and genuinely helpful. No pressure, no "shoulds", no productivity guilt. Just a supportive presence."""
 
 
-async def process_heartbeat(telegram_bot) -> None:
+async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
     """
     Process a heartbeat cycle: load context, call Claude, handle response.
 
     Args:
         telegram_bot: TelegramBot instance for sending messages
+        debug: If True, return full Claude response including reasoning
+
+    Returns:
+        dict with response details (for debug mode)
     """
-    logger.info("Processing heartbeat...")
+    logger.info("Processing heartbeat..." + (" (DEBUG MODE)" if debug else ""))
+
+    result = {
+        "tool_called": False,
+        "message_sent": None,
+        "reasoning": None,
+        "error": None
+    }
 
     # Load recent messages as context
     recent_messages = storage.messages.get_recent_messages(config.MAX_CONTEXT_MESSAGES)
@@ -120,14 +131,18 @@ async def process_heartbeat(telegram_bot) -> None:
                 message = block.input["message"]
                 logger.info(f"Claude decided to send message: {message[:50]}...")
 
-                # Send via Telegram
-                await telegram_bot.send_message(message)
+                result["tool_called"] = True
+                result["message_sent"] = message
 
-                # Log as assistant message
-                storage.messages.add_message("assistant", message)
+                # Send via Telegram (unless debug mode)
+                if not debug:
+                    await telegram_bot.send_message(message)
+                    # Log as assistant message
+                    storage.messages.add_message("assistant", message)
 
             elif block.type == "text":
-                # Claude's internal reasoning (not sent to user)
+                # Claude's internal reasoning
+                result["reasoning"] = block.text
                 logger.debug(f"Claude reasoning: {block.text}")
 
         # If no tool was called, Claude chose silence
@@ -136,6 +151,9 @@ async def process_heartbeat(telegram_bot) -> None:
 
     except Exception as e:
         logger.error(f"Error in Claude API call: {e}", exc_info=True)
+        result["error"] = str(e)
+
+    return result
 
 
 async def respond_to_user(user_message: str, telegram_bot) -> None:

@@ -4,6 +4,7 @@ from typing import Optional
 
 from . import usage_tracker
 from . import config
+from . import claude
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,10 @@ async def handle_command(command: str, telegram_bot, chat_id: int) -> bool:
 
     elif cmd == "model":
         await handle_model(args, telegram_bot, chat_id)
+        return True
+
+    elif cmd == "heartbeat":
+        await handle_heartbeat(telegram_bot, chat_id)
         return True
 
     # Add more commands here in the future
@@ -107,6 +112,46 @@ async def handle_model(args: str, telegram_bot, chat_id: int) -> None:
         response += "• opus, opus-4, opus-4.5\n"
         response += "• haiku, haiku-3, haiku-3.5"
         await telegram_bot.send_message(response, chat_id)
+
+
+async def handle_heartbeat(telegram_bot, chat_id: int) -> None:
+    """
+    Handle the ...heartbeat command.
+
+    Trigger a manual heartbeat check with debug output.
+    Shows Claude's reasoning even if it chooses silence.
+    """
+    logger.info("Handling manual heartbeat command (debug mode)")
+
+    # Send initial message
+    await telegram_bot.send_message("🔍 Running manual heartbeat check...", chat_id)
+
+    # Trigger heartbeat in debug mode
+    result = await claude.process_heartbeat(telegram_bot, debug=True)
+
+    # Build debug response
+    response = "📊 Heartbeat Debug Report\n\n"
+
+    if result["error"]:
+        response += f"❌ Error: {result['error']}"
+    else:
+        # Show Claude's reasoning
+        if result["reasoning"]:
+            response += f"💭 Claude's Reasoning:\n{result['reasoning']}\n\n"
+        else:
+            response += "💭 No reasoning provided by Claude\n\n"
+
+        # Show decision
+        if result["tool_called"]:
+            response += f"✅ Decision: SEND MESSAGE\n\n"
+            response += f"📨 Message:\n{result['message_sent']}\n\n"
+            response += "⚠️ Message NOT sent (debug mode)\n"
+            response += "This was a dry run - no message was actually sent to you."
+        else:
+            response += "🔇 Decision: STAY SILENT\n\n"
+            response += "Claude chose not to send a message this cycle."
+
+    await telegram_bot.send_message(response, chat_id)
 
 
 # Future command handlers can be added here
