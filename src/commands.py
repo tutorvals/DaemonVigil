@@ -37,7 +37,7 @@ async def handle_command(command: str, telegram_bot, chat_id: int) -> bool:
         return True
 
     elif cmd == "heartbeat":
-        await handle_heartbeat(telegram_bot, chat_id)
+        await handle_heartbeat(args, telegram_bot, chat_id)
         return True
 
     # Add more commands here in the future
@@ -114,44 +114,93 @@ async def handle_model(args: str, telegram_bot, chat_id: int) -> None:
         await telegram_bot.send_message(response, chat_id)
 
 
-async def handle_heartbeat(telegram_bot, chat_id: int) -> None:
+async def handle_heartbeat(args: str, telegram_bot, chat_id: int) -> None:
     """
-    Handle the ...heartbeat command.
+    Handle the ...heartbeat command with subcommands.
 
-    Trigger a manual heartbeat check with debug output.
-    Shows Claude's reasoning even if it chooses silence.
+    Subcommands:
+    - test: Manual debug heartbeat
+    - on: Enable automatic heartbeats
+    - off: Disable automatic heartbeats
+    - status: Show heartbeat status
     """
-    logger.info("Handling manual heartbeat command (debug mode)")
+    from main import DaemonVigil
 
-    # Send initial message
-    await telegram_bot.send_message("🔍 Running manual heartbeat check...", chat_id)
+    subcommand = args.strip().lower() if args else "test"
 
-    # Trigger heartbeat in debug mode
-    result = await claude.process_heartbeat(telegram_bot, debug=True)
+    if subcommand == "test":
+        logger.info("Handling manual heartbeat test (debug mode)")
 
-    # Build debug response
-    response = "📊 Heartbeat Debug Report\n\n"
+        # Send initial message
+        await telegram_bot.send_message("🔍 Running manual heartbeat check...", chat_id)
 
-    if result["error"]:
-        response += f"❌ Error: {result['error']}"
+        # Trigger heartbeat in debug mode
+        result = await claude.process_heartbeat(telegram_bot, debug=True)
+
+        # Build debug response
+        response = "📊 Heartbeat Debug Report\n\n"
+
+        if result["error"]:
+            response += f"❌ Error: {result['error']}"
+        else:
+            # Show Claude's reasoning
+            if result["reasoning"]:
+                response += f"💭 Claude's Reasoning:\n{result['reasoning']}\n\n"
+            else:
+                response += "💭 No reasoning provided by Claude\n\n"
+
+            # Show decision
+            if result["tool_called"]:
+                response += f"✅ Decision: SEND MESSAGE\n\n"
+                response += f"📨 Message:\n{result['message_sent']}\n\n"
+                response += "⚠️ Message NOT sent (debug mode)\n"
+                response += "This was a dry run - no message was actually sent to you."
+            else:
+                response += "🔇 Decision: STAY SILENT\n\n"
+                response += "Claude chose not to send a message this cycle."
+
+        await telegram_bot.send_message(response, chat_id)
+
+    elif subcommand == "on":
+        app = DaemonVigil.get_instance()
+        if app and app.scheduler:
+            app.scheduler.resume()
+            response = "✅ Automatic heartbeats ENABLED\n\nThe bot will check in periodically as scheduled."
+        else:
+            response = "❌ Scheduler not available"
+        await telegram_bot.send_message(response, chat_id)
+
+    elif subcommand == "off":
+        app = DaemonVigil.get_instance()
+        if app and app.scheduler:
+            app.scheduler.pause()
+            response = "🔇 Automatic heartbeats DISABLED\n\nThe bot will not send scheduled check-ins.\nYou can still use '...heartbeat test' for manual checks."
+        else:
+            response = "❌ Scheduler not available"
+        await telegram_bot.send_message(response, chat_id)
+
+    elif subcommand == "status":
+        app = DaemonVigil.get_instance()
+        if app and app.scheduler:
+            status = app.scheduler.get_status()
+            response = "📊 Heartbeat Status\n\n"
+            response += f"State: {'✅ ENABLED' if status['enabled'] else '🔇 DISABLED'}\n"
+            response += f"Interval: {status['interval_minutes']} minutes\n"
+            if status['next_run']:
+                response += f"Next run: {status['next_run']}\n"
+            else:
+                response += "Next run: Not scheduled\n"
+        else:
+            response = "❌ Scheduler not available"
+        await telegram_bot.send_message(response, chat_id)
+
     else:
-        # Show Claude's reasoning
-        if result["reasoning"]:
-            response += f"💭 Claude's Reasoning:\n{result['reasoning']}\n\n"
-        else:
-            response += "💭 No reasoning provided by Claude\n\n"
-
-        # Show decision
-        if result["tool_called"]:
-            response += f"✅ Decision: SEND MESSAGE\n\n"
-            response += f"📨 Message:\n{result['message_sent']}\n\n"
-            response += "⚠️ Message NOT sent (debug mode)\n"
-            response += "This was a dry run - no message was actually sent to you."
-        else:
-            response += "🔇 Decision: STAY SILENT\n\n"
-            response += "Claude chose not to send a message this cycle."
-
-    await telegram_bot.send_message(response, chat_id)
+        response = "❌ Unknown heartbeat command\n\nAvailable:\n"
+        response += "• ...heartbeat test - Run debug heartbeat\n"
+        response += "• ...heartbeat on - Enable automatic heartbeats\n"
+        response += "• ...heartbeat off - Disable automatic heartbeats\n"
+        response += "• ...heartbeat status - Show status"
+        await telegram_bot.send_message(response, chat_id)
 
 
 # Future command handlers can be added here

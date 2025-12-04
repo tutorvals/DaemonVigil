@@ -28,16 +28,25 @@ logger = logging.getLogger(__name__)
 class DaemonVigil:
     """Main application class."""
 
+    # Class variable to store instance for command access
+    _instance = None
+
     def __init__(self, silent: bool = False):
         self.telegram_bot = None
         self.scheduler = None
         self.shutdown_event = asyncio.Event()
         self.silent = silent
+        DaemonVigil._instance = self
 
     async def on_user_message(self, message: str, chat_id: int):
         """Callback when user sends a message."""
         logger.info(f"User message received: {message[:50]}...")
         await claude.respond_to_user(message, self.telegram_bot)
+
+    @classmethod
+    def get_instance(cls):
+        """Get the current DaemonVigil instance."""
+        return cls._instance
 
     async def start(self):
         """Start all components."""
