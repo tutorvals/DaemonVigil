@@ -92,8 +92,9 @@ async def process_heartbeat(telegram_bot) -> None:
 
     # Call Claude API
     try:
+        model = config.get_claude_model()
         response = client.messages.create(
-            model=config.CLAUDE_MODEL,
+            model=model,
             max_tokens=1024,
             system=full_system_prompt,
             messages=messages,
@@ -102,7 +103,7 @@ async def process_heartbeat(telegram_bot) -> None:
 
         # Track usage and cost
         usage_data = usage_tracker.calculate_cost(
-            model=config.CLAUDE_MODEL,
+            model=model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens
         )
@@ -176,8 +177,9 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
 
     # Call Claude API
     try:
+        model = config.get_claude_model()
         response = client.messages.create(
-            model=config.CLAUDE_MODEL,
+            model=model,
             max_tokens=2048,
             system=full_system_prompt,
             messages=messages
@@ -185,7 +187,7 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
 
         # Track usage and cost
         usage_data = usage_tracker.calculate_cost(
-            model=config.CLAUDE_MODEL,
+            model=model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens
         )

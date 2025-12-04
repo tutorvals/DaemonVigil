@@ -11,7 +11,7 @@ from . import config
 PRICING = {
     "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
     "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
-    "claude-opus-4-5-20251101": {"input": 5.00, "output": 25.00},
+    "claude-opus-4-5-20251101": {"input": 15.00, "output": 75.00},
     "claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.00},
     "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
 }
@@ -123,7 +123,7 @@ def format_usage_report() -> str:
     month_stats = get_usage_stats(30)
 
     report = "📊 Status Report\n\n"
-    report += f"Model: {config.CLAUDE_MODEL}\n\n"
+    report += f"Model: {config.get_claude_model()}\n\n"
     report += "💰 API Costs:\n"
 
     if today_stats["request_count"] == 0:

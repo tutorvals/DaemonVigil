@@ -42,11 +42,34 @@ if TELEGRAM_CHAT_ID:
 # Config values with defaults
 HEARTBEAT_INTERVAL_MINUTES = config.get("heartbeat_interval_minutes", 15)
 MAX_CONTEXT_MESSAGES = config.get("max_context_messages", 50)
-CLAUDE_MODEL = config.get("claude_model", "claude-sonnet-4-20250514")
+
+
+def get_claude_model() -> str:
+    """Get the current Claude model from config (dynamically reloaded)."""
+    global config
+    # Reload config to get latest value
+    with open(CONFIG_FILE, 'r') as f:
+        config = yaml.safe_load(f)
+    return config.get("claude_model", "claude-sonnet-4-20250514")
+
+
+# Available models with friendly names
+MODEL_ALIASES = {
+    "sonnet": "claude-sonnet-4-20250514",
+    "sonnet-4": "claude-sonnet-4-20250514",
+    "sonnet-4.5": "claude-sonnet-4-5-20250929",
+    "opus": "claude-opus-4-5-20251101",
+    "opus-4": "claude-opus-4-5-20251101",
+    "opus-4.5": "claude-opus-4-5-20251101",
+    "haiku": "claude-3-5-haiku-20241022",
+    "haiku-3": "claude-3-haiku-20240307",
+    "haiku-3.5": "claude-3-5-haiku-20241022",
+}
 
 
 def update_config(key: str, value) -> None:
     """Update a configuration value and save to config.yaml."""
+    global config
     config[key] = value
     with open(CONFIG_FILE, 'w') as f:
         yaml.safe_dump(config, f, default_flow_style=False)
