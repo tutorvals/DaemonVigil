@@ -78,7 +78,8 @@ def get_usage_stats(days: int) -> Dict:
             "output_tokens": 0
         }
 
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    from datetime import timezone
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     total_input_tokens = 0
     total_output_tokens = 0
