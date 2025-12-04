@@ -1,6 +1,7 @@
 """Claude API integration."""
 import logging
 from pathlib import Path
+from datetime import datetime
 from anthropic import Anthropic
 
 from . import config
@@ -8,6 +9,28 @@ from . import storage
 from . import usage_tracker
 
 logger = logging.getLogger(__name__)
+
+
+def format_timestamp(iso_timestamp: str) -> str:
+    """
+    Format ISO timestamp to human-readable format.
+
+    Args:
+        iso_timestamp: ISO format timestamp string
+
+    Returns:
+        Formatted string like "2025-12-03 15:30:42 UTC"
+    """
+    try:
+        dt = datetime.fromisoformat(iso_timestamp.replace('Z', '+00:00'))
+        return dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+    except:
+        return iso_timestamp
+
+
+def get_current_time_str() -> str:
+    """Get current time as formatted string."""
+    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
 # Initialize Anthropic client
 client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
@@ -74,16 +97,23 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
     # Build context string for system prompt
     context_parts = []
 
+    # Add current time
+    current_time = get_current_time_str()
+    context_parts.append(f"## Current Time: {current_time}")
+    context_parts.append("")
+
     if notes:
         context_parts.append("## Your Notes (Scratchpad):")
         for note in notes[-10:]:  # Last 10 notes
-            context_parts.append(f"- [{note['timestamp']}] {note['note']}")
+            timestamp = format_timestamp(note['timestamp'])
+            context_parts.append(f"- [{timestamp}] {note['note']}")
         context_parts.append("")
 
     if recent_messages:
         context_parts.append("## Recent Conversation:")
         for msg in recent_messages:
-            context_parts.append(f"[{msg['timestamp']}] {msg['role']}: {msg['content']}")
+            timestamp = format_timestamp(msg['timestamp'])
+            context_parts.append(f"[{timestamp}] {msg['role']}: {msg['content']}")
     else:
         context_parts.append("## Recent Conversation:")
         context_parts.append("(No conversation history yet)")
@@ -97,7 +127,7 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
     messages = [
         {
             "role": "user",
-            "content": "This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to Vals or stay silent."
+            "content": f"[{current_time}] This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to Vals or stay silent."
         }
     ]
 
@@ -169,22 +199,31 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
     # Load recent messages
     recent_messages = storage.messages.get_recent_messages(config.MAX_CONTEXT_MESSAGES)
 
-    # Build conversation for Claude (standard message format)
+    # Build conversation for Claude with timestamps in content
     messages = []
     for msg in recent_messages:
+        timestamp = format_timestamp(msg["timestamp"])
+        # Prepend timestamp to message content
+        content_with_time = f"[{timestamp}] {msg['content']}"
         messages.append({
             "role": msg["role"],
-            "content": msg["content"]
+            "content": content_with_time
         })
 
-    # Load system prompt with scratchpad context
+    # Load system prompt with scratchpad context and current time
     notes = storage.scratchpad.get_notes()
     context_parts = []
+
+    # Add current time
+    current_time = get_current_time_str()
+    context_parts.append(f"## Current Time: {current_time}")
+    context_parts.append("")
 
     if notes:
         context_parts.append("## Your Notes (Scratchpad):")
         for note in notes[-10:]:
-            context_parts.append(f"- [{note['timestamp']}] {note['note']}")
+            timestamp = format_timestamp(note['timestamp'])
+            context_parts.append(f"- [{timestamp}] {note['note']}")
         context_parts.append("")
 
     system_prompt = load_system_prompt()
