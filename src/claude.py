@@ -6,6 +6,7 @@ from anthropic import Anthropic
 
 from . import config
 from . import storage
+from .storage import UserStorageManager, UserConfig
 from . import usage_tracker
 
 logger = logging.getLogger(__name__)
@@ -68,18 +69,27 @@ You run on a heartbeat, periodically checking in. You have access to conversatio
 Be warm, patient, and genuinely helpful. No pressure, no "shoulds", no productivity guilt. Just a supportive presence."""
 
 
-async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
+async def process_heartbeat(
+    telegram_bot,
+    user_id: str,
+    user_storage: UserStorageManager,
+    user_config: UserConfig,
+    debug: bool = False
+) -> dict:
     """
-    Process a heartbeat cycle: load context, call Claude, handle response.
+    Process a heartbeat cycle for a specific user: load context, call Claude, handle response.
 
     Args:
         telegram_bot: TelegramBot instance for sending messages
+        user_id: User ID (Telegram chat ID as string)
+        user_storage: User's storage manager
+        user_config: User's configuration
         debug: If True, return full Claude response including reasoning
 
     Returns:
         dict with response details (for debug mode)
     """
-    logger.info("Processing heartbeat..." + (" (DEBUG MODE)" if debug else ""))
+    logger.info(f"💓 Processing heartbeat for user {user_id}" + (" (DEBUG MODE)" if debug else ""))
 
     result = {
         "tool_called": False,
@@ -88,11 +98,11 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
         "error": None
     }
 
-    # Load recent messages as context
-    recent_messages = storage.messages.get_recent_messages(config.MAX_CONTEXT_MESSAGES)
+    # Load user's recent messages as context
+    recent_messages = user_storage.messages.get_recent_messages(user_config.max_context_messages)
 
-    # Load scratchpad notes
-    notes = storage.scratchpad.get_notes()
+    # Load user's scratchpad notes
+    notes = user_storage.scratchpad.get_notes()
 
     # Build context string for system prompt
     context_parts = []
@@ -133,7 +143,8 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
 
     # Call Claude API
     try:
-        model = config.get_claude_model()
+        # Use user's preferred model
+        model = user_config.model
         response = client.messages.create(
             model=model,
             max_tokens=1024,
@@ -142,16 +153,17 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
             tools=TOOLS
         )
 
-        # Track usage and cost
+        # Track usage and cost with user_id
         usage_data = usage_tracker.calculate_cost(
             model=model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens
         )
         usage_data["request_type"] = "heartbeat"
+        usage_data["user_id"] = user_id  # Track per-user costs
         usage_tracker.log_api_usage(usage_data)
 
-        logger.info(f"API Usage - Input: {response.usage.input_tokens}, "
+        logger.info(f"💰 API Usage (user {user_id}) - Input: {response.usage.input_tokens}, "
                    f"Output: {response.usage.output_tokens}, "
                    f"Cost: ${usage_data['total_cost']:.6f}")
 
@@ -159,16 +171,16 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
         for block in response.content:
             if block.type == "tool_use" and block.name == "send_message":
                 message = block.input["message"]
-                logger.info(f"Claude decided to send message: {message[:50]}...")
+                logger.info(f"Claude decided to send message to user {user_id}: {message[:50]}...")
 
                 result["tool_called"] = True
                 result["message_sent"] = message
 
-                # Send via Telegram (unless debug mode)
+                # Send via Telegram to specific user (unless debug mode)
                 if not debug:
-                    await telegram_bot.send_message(message)
-                    # Log as assistant message
-                    storage.messages.add_message("assistant", message)
+                    await telegram_bot.send_message(message, chat_id=int(user_id))
+                    # Log as assistant message in user's storage
+                    user_storage.messages.add_message("assistant", message)
 
             elif block.type == "text":
                 # Claude's internal reasoning
@@ -186,18 +198,27 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
     return result
 
 
-async def respond_to_user(user_message: str, telegram_bot) -> None:
+async def respond_to_user(
+    user_message: str,
+    telegram_bot,
+    user_id: str,
+    user_storage: UserStorageManager,
+    user_config: UserConfig
+) -> None:
     """
     Respond immediately to a user message (outside of heartbeat).
 
     Args:
         user_message: The message from the user
         telegram_bot: TelegramBot instance for sending messages
+        user_id: User ID (Telegram chat ID as string)
+        user_storage: User's storage manager
+        user_config: User's configuration
     """
-    logger.info(f"Responding to user message: {user_message[:50]}...")
+    logger.info(f"🤖 Responding to user {user_id}: {user_message[:50]}...")
 
-    # Load recent messages
-    recent_messages = storage.messages.get_recent_messages(config.MAX_CONTEXT_MESSAGES)
+    # Load user's recent messages
+    recent_messages = user_storage.messages.get_recent_messages(user_config.max_context_messages)
 
     # Build conversation for Claude with timestamps in content
     messages = []
@@ -210,8 +231,8 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
             "content": content_with_time
         })
 
-    # Load system prompt with scratchpad context and current time
-    notes = storage.scratchpad.get_notes()
+    # Load system prompt with user's scratchpad context and current time
+    notes = user_storage.scratchpad.get_notes()
     context_parts = []
 
     # Add current time
@@ -234,7 +255,8 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
 
     # Call Claude API
     try:
-        model = config.get_claude_model()
+        # Use user's preferred model
+        model = user_config.model
         response = client.messages.create(
             model=model,
             max_tokens=2048,
@@ -242,17 +264,18 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
             messages=messages
         )
 
-        # Track usage and cost
+        # Track usage and cost with user_id
         usage_data = usage_tracker.calculate_cost(
             model=model,
             input_tokens=response.usage.input_tokens,
             output_tokens=response.usage.output_tokens
         )
         usage_data["request_type"] = "user_response"
+        usage_data["user_id"] = user_id  # Track per-user costs
         usage_data["user_message_preview"] = user_message[:50]
         usage_tracker.log_api_usage(usage_data)
 
-        logger.info(f"API Usage - Input: {response.usage.input_tokens}, "
+        logger.info(f"💰 API Usage (user {user_id}) - Input: {response.usage.input_tokens}, "
                    f"Output: {response.usage.output_tokens}, "
                    f"Cost: ${usage_data['total_cost']:.6f}")
 
@@ -263,15 +286,16 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
                 response_text += block.text
 
         if response_text:
-            logger.info(f"Claude response: {response_text[:50]}...")
+            logger.info(f"Claude response to user {user_id}: {response_text[:50]}...")
 
-            # Send via Telegram
-            await telegram_bot.send_message(response_text)
+            # Send via Telegram to specific user
+            await telegram_bot.send_message(response_text, chat_id=int(user_id))
 
-            # Log as assistant message
-            storage.messages.add_message("assistant", response_text)
+            # Log as assistant message in user's storage
+            user_storage.messages.add_message("assistant", response_text)
         else:
-            logger.warning("Claude returned empty response")
+            logger.warning(f"Claude returned empty response for user {user_id}")
 
     except Exception as e:
-        logger.error(f"Error in Claude API call: {e}", exc_info=True)
+        logger.error(f"Error in Claude API call for user {user_id}: {e}", exc_info=True)
+        raise

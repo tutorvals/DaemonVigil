@@ -5,18 +5,19 @@ from typing import Optional
 from . import usage_tracker
 from . import config
 from . import claude
+from .storage import get_user_storage
 
 logger = logging.getLogger(__name__)
 
 
-async def handle_command(command: str, telegram_bot, chat_id: int) -> bool:
+async def handle_command(command: str, telegram_bot, user_id: str) -> bool:
     """
-    Handle a command message.
+    Handle a command message with user context.
 
     Args:
         command: The command string (without the "..." prefix)
         telegram_bot: TelegramBot instance for sending responses
-        chat_id: Telegram chat_id to send response to
+        user_id: User ID (Telegram chat ID as string)
 
     Returns:
         True if command was handled, False if invalid command
@@ -29,58 +30,63 @@ async def handle_command(command: str, telegram_bot, chat_id: int) -> bool:
     args = parts[1] if len(parts) > 1 else ""
 
     if cmd == "status":
-        await handle_status(telegram_bot, chat_id)
+        await handle_status(telegram_bot, user_id)
         return True
 
     elif cmd == "model":
-        await handle_model(args, telegram_bot, chat_id)
+        await handle_model(args, telegram_bot, user_id)
         return True
 
     elif cmd == "heartbeat":
-        await handle_heartbeat(args, telegram_bot, chat_id)
+        await handle_heartbeat(args, telegram_bot, user_id)
         return True
 
     # Add more commands here in the future
     # elif cmd == "help":
-    #     await handle_help(telegram_bot, chat_id)
+    #     await handle_help(telegram_bot, user_id)
     #     return True
 
     # Unknown command - return False to silently ignore
     return False
 
 
-async def handle_status(telegram_bot, chat_id: int) -> None:
+async def handle_status(telegram_bot, user_id: str) -> None:
     """
     Handle the ...status command.
 
-    Shows current model and API cost breakdown.
+    Shows current model and API cost breakdown for the user.
     """
-    logger.info("Handling status command")
+    logger.info(f"Handling status command for user {user_id}")
 
-    report = usage_tracker.format_usage_report()
-    await telegram_bot.send_message(report, chat_id)
+    # Get user-specific report
+    report = usage_tracker.format_usage_report(user_id)
+    await telegram_bot.send_message(report, chat_id=int(user_id))
 
 
-async def handle_model(args: str, telegram_bot, chat_id: int) -> None:
+async def handle_model(args: str, telegram_bot, user_id: str) -> None:
     """
     Handle the ...model command.
 
-    Switch the Claude model being used.
+    Switch the Claude model being used for this user.
 
     Args:
         args: Model alias (e.g., "opus", "sonnet", "haiku")
     """
-    logger.info(f"Handling model command with args: {args}")
+    logger.info(f"Handling model command for user {user_id} with args: {args}")
+
+    # Get user storage
+    user_storage = get_user_storage(user_id)
+    user_config = user_storage.config.get_config()
 
     if not args:
-        # Show current model
-        current = config.get_claude_model()
-        response = f"Current model: {current}\n\nAvailable models:\n"
+        # Show current model for this user
+        current = user_config.model
+        response = f"Your current model: {current}\n\nAvailable models:\n"
         response += "• ...model sonnet (Sonnet 4)\n"
         response += "• ...model sonnet-4.5 (Sonnet 4.5)\n"
         response += "• ...model opus (Opus 4.5)\n"
         response += "• ...model haiku (Haiku 3.5)\n"
-        await telegram_bot.send_message(response, chat_id)
+        await telegram_bot.send_message(response, chat_id=int(user_id))
         return
 
     # Try to resolve alias
@@ -89,8 +95,8 @@ async def handle_model(args: str, telegram_bot, chat_id: int) -> None:
     if model_alias in config.MODEL_ALIASES:
         full_model_name = config.MODEL_ALIASES[model_alias]
 
-        # Update config
-        config.update_config("claude_model", full_model_name)
+        # Update user-specific config
+        user_storage.config.update_config(model=full_model_name)
 
         # Get friendly name for confirmation
         friendly_name_map = {
@@ -102,19 +108,19 @@ async def handle_model(args: str, telegram_bot, chat_id: int) -> None:
         }
         friendly_name = friendly_name_map.get(full_model_name, full_model_name)
 
-        response = f"✅ Model switched to {friendly_name}\n({full_model_name})"
-        logger.info(f"Model switched to {full_model_name}")
-        await telegram_bot.send_message(response, chat_id)
+        response = f"✅ Your model switched to {friendly_name}\n({full_model_name})"
+        logger.info(f"User {user_id} model switched to {full_model_name}")
+        await telegram_bot.send_message(response, chat_id=int(user_id))
     else:
         # Unknown model alias
         response = f"❌ Unknown model: {model_alias}\n\nAvailable models:\n"
         response += "• sonnet, sonnet-4, sonnet-4.5\n"
         response += "• opus, opus-4, opus-4.5\n"
         response += "• haiku, haiku-3, haiku-3.5"
-        await telegram_bot.send_message(response, chat_id)
+        await telegram_bot.send_message(response, chat_id=int(user_id))
 
 
-async def handle_heartbeat(args: str, telegram_bot, chat_id: int) -> None:
+async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
     """
     Handle the ...heartbeat command with subcommands.
 
@@ -129,13 +135,23 @@ async def handle_heartbeat(args: str, telegram_bot, chat_id: int) -> None:
     subcommand = args.strip().lower() if args else "test"
 
     if subcommand == "test":
-        logger.info("Handling manual heartbeat test (debug mode)")
+        logger.info(f"Handling manual heartbeat test for user {user_id} (debug mode)")
 
         # Send initial message
-        await telegram_bot.send_message("🔍 Running manual heartbeat check...", chat_id)
+        await telegram_bot.send_message("🔍 Running manual heartbeat check...", chat_id=int(user_id))
 
-        # Trigger heartbeat in debug mode
-        result = await claude.process_heartbeat(telegram_bot, debug=True)
+        # Get user context
+        user_storage = get_user_storage(user_id)
+        user_config = user_storage.config.get_config()
+
+        # Trigger heartbeat in debug mode with user context
+        result = await claude.process_heartbeat(
+            telegram_bot=telegram_bot,
+            user_id=user_id,
+            user_storage=user_storage,
+            user_config=user_config,
+            debug=True
+        )
 
         # Build debug response
         response = "📊 Heartbeat Debug Report\n\n"
@@ -159,40 +175,83 @@ async def handle_heartbeat(args: str, telegram_bot, chat_id: int) -> None:
                 response += "🔇 Decision: STAY SILENT\n\n"
                 response += "Claude chose not to send a message this cycle."
 
-        await telegram_bot.send_message(response, chat_id)
+        await telegram_bot.send_message(response, chat_id=int(user_id))
 
     elif subcommand == "on":
         app = DaemonVigil.get_instance()
         if app and app.scheduler:
-            app.scheduler.resume()
-            response = "✅ Automatic heartbeats ENABLED\n\nThe bot will check in periodically as scheduled."
+            # Try multi-user scheduler first, fallback to single-user
+            try:
+                if hasattr(app.scheduler, 'resume_user'):
+                    # Multi-user scheduler
+                    app.scheduler.resume_user(user_id)
+                    user_storage = get_user_storage(user_id)
+                    user_storage.config.update_config(heartbeat_enabled=True)
+                else:
+                    # Old single-user scheduler
+                    app.scheduler.resume()
+                response = "✅ Automatic heartbeats ENABLED\n\nThe bot will check in periodically as scheduled."
+            except Exception as e:
+                logger.error(f"Error enabling heartbeats for user {user_id}: {e}")
+                response = f"❌ Error enabling heartbeats: {e}"
         else:
             response = "❌ Scheduler not available"
-        await telegram_bot.send_message(response, chat_id)
+        await telegram_bot.send_message(response, chat_id=int(user_id))
 
     elif subcommand == "off":
         app = DaemonVigil.get_instance()
         if app and app.scheduler:
-            app.scheduler.pause()
-            response = "🔇 Automatic heartbeats DISABLED\n\nThe bot will not send scheduled check-ins.\nYou can still use '...heartbeat test' for manual checks."
+            # Try multi-user scheduler first, fallback to single-user
+            try:
+                if hasattr(app.scheduler, 'pause_user'):
+                    # Multi-user scheduler
+                    app.scheduler.pause_user(user_id)
+                    user_storage = get_user_storage(user_id)
+                    user_storage.config.update_config(heartbeat_enabled=False)
+                else:
+                    # Old single-user scheduler
+                    app.scheduler.pause()
+                response = "🔇 Automatic heartbeats DISABLED\n\nThe bot will not send scheduled check-ins.\nYou can still use '...heartbeat test' for manual checks."
+            except Exception as e:
+                logger.error(f"Error disabling heartbeats for user {user_id}: {e}")
+                response = f"❌ Error disabling heartbeats: {e}"
         else:
             response = "❌ Scheduler not available"
-        await telegram_bot.send_message(response, chat_id)
+        await telegram_bot.send_message(response, chat_id=int(user_id))
 
     elif subcommand == "status":
         app = DaemonVigil.get_instance()
         if app and app.scheduler:
-            status = app.scheduler.get_status()
-            response = "📊 Heartbeat Status\n\n"
-            response += f"State: {'✅ ENABLED' if status['enabled'] else '🔇 DISABLED'}\n"
-            response += f"Interval: {status['interval_minutes']} minutes\n"
-            if status['next_run']:
-                response += f"Next run: {status['next_run']}\n"
-            else:
-                response += "Next run: Not scheduled\n"
+            try:
+                # Try multi-user scheduler first
+                if hasattr(app.scheduler, 'get_user_status'):
+                    # Multi-user scheduler
+                    status = app.scheduler.get_user_status(user_id)
+                    user_storage = get_user_storage(user_id)
+                    user_config = user_storage.config.get_config()
+                    response = "📊 Your Heartbeat Status\n\n"
+                    response += f"State: {'✅ ENABLED' if status.get('enabled', True) else '🔇 DISABLED'}\n"
+                    response += f"Interval: {user_config.heartbeat_interval_minutes} minutes\n"
+                    if status.get('next_run'):
+                        response += f"Next run: {status['next_run']}\n"
+                    else:
+                        response += "Next run: Not scheduled\n"
+                else:
+                    # Old single-user scheduler
+                    status = app.scheduler.get_status()
+                    response = "📊 Heartbeat Status\n\n"
+                    response += f"State: {'✅ ENABLED' if status['enabled'] else '🔇 DISABLED'}\n"
+                    response += f"Interval: {status['interval_minutes']} minutes\n"
+                    if status['next_run']:
+                        response += f"Next run: {status['next_run']}\n"
+                    else:
+                        response += "Next run: Not scheduled\n"
+            except Exception as e:
+                logger.error(f"Error getting heartbeat status for user {user_id}: {e}")
+                response = f"❌ Error getting status: {e}"
         else:
             response = "❌ Scheduler not available"
-        await telegram_bot.send_message(response, chat_id)
+        await telegram_bot.send_message(response, chat_id=int(user_id))
 
     else:
         response = "❌ Unknown heartbeat command\n\nAvailable:\n"
@@ -200,7 +259,7 @@ async def handle_heartbeat(args: str, telegram_bot, chat_id: int) -> None:
         response += "• ...heartbeat on - Enable automatic heartbeats\n"
         response += "• ...heartbeat off - Disable automatic heartbeats\n"
         response += "• ...heartbeat status - Show status"
-        await telegram_bot.send_message(response, chat_id)
+        await telegram_bot.send_message(response, chat_id=int(user_id))
 
 
 # Future command handlers can be added here

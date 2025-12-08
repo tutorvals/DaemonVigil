@@ -1,11 +1,15 @@
 """API usage tracking and cost calculation."""
 import json
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from . import config
+from .storage import get_user_storage
+
+logger = logging.getLogger(__name__)
 
 # Pricing per million tokens (as of Dec 2025)
 PRICING = {
@@ -53,8 +57,14 @@ def log_api_usage(usage_data: Dict) -> None:
     Log API usage to JSONL file.
 
     Args:
-        usage_data: Dict containing usage and cost information
+        usage_data: Dict containing usage and cost information.
+                   Must include 'user_id' field for per-user tracking.
     """
+    # Validate user_id presence
+    if "user_id" not in usage_data:
+        logger.warning("⚠️  Usage data missing user_id - cannot track per-user costs")
+        usage_data["user_id"] = "unknown"
+
     with open(USAGE_FILE, 'a') as f:
         f.write(json.dumps(usage_data) + '\n')
 
@@ -112,37 +122,176 @@ def get_usage_stats(days: int) -> Dict:
     }
 
 
-def format_usage_report() -> str:
+def get_user_usage_stats(user_id: str, days: int) -> Dict:
     """
-    Format a usage report for display.
+    Get usage statistics for a SPECIFIC user over last N days.
+
+    Args:
+        user_id: User ID to filter by
+        days: Number of days to look back
 
     Returns:
-        Formatted string with usage statistics
+        dict with aggregated usage statistics for that user
     """
-    from . import storage
+    if not USAGE_FILE.exists():
+        return {
+            "user_id": user_id,
+            "total_cost": 0.0,
+            "total_tokens": 0,
+            "request_count": 0,
+            "input_tokens": 0,
+            "output_tokens": 0
+        }
+
+    from datetime import timezone
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    total_input_tokens = 0
+    total_output_tokens = 0
+    total_cost = 0.0
+    request_count = 0
+
+    with open(USAGE_FILE, 'r') as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+
+                # Filter by user_id
+                if entry.get("user_id") != user_id:
+                    continue
+
+                entry_time = datetime.fromisoformat(entry["timestamp"].replace('Z', '+00:00'))
+
+                if entry_time < cutoff_date:
+                    continue
+
+                total_input_tokens += entry["input_tokens"]
+                total_output_tokens += entry["output_tokens"]
+                total_cost += entry["total_cost"]
+                request_count += 1
+
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+
+    return {
+        "user_id": user_id,
+        "total_cost": round(total_cost, 4),
+        "total_tokens": total_input_tokens + total_output_tokens,
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens,
+        "request_count": request_count
+    }
+
+
+def get_all_users_usage_stats(days: int) -> List[Dict]:
+    """
+    Get usage statistics for ALL users (admin function).
+
+    Args:
+        days: Number of days to look back
+
+    Returns:
+        List of dicts with per-user stats, sorted by cost descending
+    """
+    if not USAGE_FILE.exists():
+        return []
+
+    from datetime import timezone
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Aggregate stats by user_id
+    user_stats = defaultdict(lambda: {
+        "total_cost": 0.0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "request_count": 0
+    })
+
+    with open(USAGE_FILE, 'r') as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+                user_id = entry.get("user_id")
+
+                if not user_id or user_id == "unknown":
+                    continue
+
+                entry_time = datetime.fromisoformat(
+                    entry["timestamp"].replace('Z', '+00:00')
+                )
+
+                if entry_time < cutoff_date:
+                    continue
+
+                user_stats[user_id]["total_cost"] += entry["total_cost"]
+                user_stats[user_id]["input_tokens"] += entry["input_tokens"]
+                user_stats[user_id]["output_tokens"] += entry["output_tokens"]
+                user_stats[user_id]["request_count"] += 1
+
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+
+    # Convert to list and sort by cost
+    result = []
+    for user_id, stats in user_stats.items():
+        result.append({
+            "user_id": user_id,
+            "total_cost": round(stats["total_cost"], 4),
+            "total_tokens": stats["input_tokens"] + stats["output_tokens"],
+            "input_tokens": stats["input_tokens"],
+            "output_tokens": stats["output_tokens"],
+            "request_count": stats["request_count"]
+        })
+
+    result.sort(key=lambda x: x["total_cost"], reverse=True)
+    return result
+
+
+def format_usage_report(user_id: str) -> str:
+    """
+    Format a usage report for a specific user.
+
+    Args:
+        user_id: User ID to generate report for
+
+    Returns:
+        Formatted string with usage statistics for that user
+    """
     from main import DaemonVigil
 
-    today_stats = get_usage_stats(1)
-    week_stats = get_usage_stats(7)
-    month_stats = get_usage_stats(30)
+    # Get user-specific storage and config
+    user_storage = get_user_storage(user_id)
+    user_config = user_storage.config.get_config()
+
+    # Get user-specific usage stats
+    today_stats = get_user_usage_stats(user_id, 1)
+    week_stats = get_user_usage_stats(user_id, 7)
+    month_stats = get_user_usage_stats(user_id, 30)
 
     report = "📊 Status Report\n\n"
-    report += f"Model: {config.get_claude_model()}\n\n"
+    report += f"Model: {user_config.model}\n\n"
 
-    # Heartbeat status
+    # Heartbeat status (user-specific)
     app = DaemonVigil.get_instance()
     if app and app.scheduler:
-        status = app.scheduler.get_status()
-        report += "💓 Heartbeat:\n"
-        report += f"State: {'✅ Enabled' if status['enabled'] else '🔇 Disabled'}\n"
-        report += f"Interval: {status['interval_minutes']} minutes\n"
-        if status['next_run']:
-            report += f"Next run: {status['next_run'].strftime('%H:%M:%S UTC')}\n"
-        report += "\n"
+        # Try to get user-specific status (will work after Phase 3)
+        try:
+            status = app.scheduler.get_user_status(user_id)
+            report += "💓 Heartbeat:\n"
+            report += f"State: {'✅ Enabled' if status.get('enabled', True) else '🔇 Disabled'}\n"
+            report += f"Interval: {user_config.heartbeat_interval_minutes} minutes\n"
+            if status.get('next_run'):
+                report += f"Next run: {status['next_run'].strftime('%H:%M:%S UTC')}\n"
+            report += "\n"
+        except (AttributeError, KeyError):
+            # Fallback for old scheduler (before Phase 3)
+            report += "💓 Heartbeat:\n"
+            report += f"Interval: {user_config.heartbeat_interval_minutes} minutes\n"
+            report += "(Multi-user scheduler not yet active)\n\n"
 
-    # Context information
-    messages = storage.messages.get_recent_messages()
-    notes = storage.scratchpad.get_notes()
+    # User-specific context information
+    messages = user_storage.messages.get_recent_messages()
+    notes = user_storage.scratchpad.get_notes()
 
     report += "📚 Context:\n"
     report += f"Messages in history: {len(messages)}\n"
@@ -156,7 +305,7 @@ def format_usage_report() -> str:
             note_preview = note_preview[:77] + "..."
         report += f"Last note: {note_preview}\n"
 
-    report += "\n💰 API Costs:\n"
+    report += "\n💰 API Costs (Your Usage Only):\n"
 
     if today_stats["request_count"] == 0:
         report += "No API usage recorded yet\n"
