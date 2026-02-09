@@ -274,7 +274,7 @@ def format_usage_report() -> str:
         Formatted string with usage statistics
     """
     from . import storage
-    from main import DaemonVigil
+    from .app import DaemonVigil
 
     today_stats = get_usage_stats(1)
     week_stats = get_usage_stats(7)

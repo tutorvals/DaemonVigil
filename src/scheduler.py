@@ -45,7 +45,7 @@ class HeartbeatScheduler:
 
     def start(self):
         """Start the scheduler."""
-        interval_minutes = config.HEARTBEAT_INTERVAL_MINUTES
+        interval_minutes = config.get_heartbeat_interval()
         logger.info(f"Starting scheduler with {interval_minutes} minute interval")
 
         # Add the job with explicit configuration
@@ -82,7 +82,7 @@ class HeartbeatScheduler:
         return {
             "enabled": self.enabled,
             "next_run": job.next_run_time if job else None,
-            "interval_minutes": config.HEARTBEAT_INTERVAL_MINUTES
+            "interval_minutes": config.get_heartbeat_interval()
         }
 
     def stop(self):

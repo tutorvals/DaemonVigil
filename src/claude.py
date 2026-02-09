@@ -39,7 +39,7 @@ client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
 TOOLS = [
     {
         "name": "send_message",
-        "description": "Send a message to Vals via Telegram. Use this to check in, ask how he's doing, offer help, or gently prompt. You may also choose NOT to call this tool if silence is more appropriate (e.g., user just said they're going for a run).",
+        "description": "Send a message to the user via Telegram. Use this to check in, ask how he's doing, offer help, or gently prompt. You may also choose NOT to call this tool if silence is more appropriate (e.g., user just said they're going for a run).",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -65,7 +65,7 @@ def load_system_prompt() -> str:
 
 You run on a heartbeat, periodically checking in. You have access to conversation history and can choose whether to send a message or stay silent.
 
-Be warm, patient, and genuinely helpful. No pressure, no "shoulds", no productivity guilt. Just a supportive presence."""
+Be warm, patient, and genuinely helpful"""
 
 
 async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
@@ -127,7 +127,7 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
     messages = [
         {
             "role": "user",
-            "content": f"[{current_time}] This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to Vals or stay silent."
+            "content": f"[{current_time}] This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to the user or stay silent."
         }
     ]
 

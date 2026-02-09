@@ -4,10 +4,9 @@
 
 Daemon Vigil is a personal AI companion service that proactively checks in with the user via Telegram. Unlike reactive chat interfaces, Daemon Vigil runs on a heartbeat – periodically waking up, assessing context, and *deciding* whether to send a message. It's an agent with discretion, not a dumb timer.
 
-The user is Vals, based in southern France. He benefits from gentle external prompting to stay engaged with tasks and intentions, but dislikes pressure or "shoulds." The tone should be patient, warm, and adaptive.
+Assume the user benefits from gentle external prompting to stay engaged with tasks and intentions, but dislikes pressure or "shoulds." The tone should be patient, warm, and adaptive.
 
 ## Core Behavior
-
 - Service runs a heartbeat every 15-30 minutes (configurable)
 - Each heartbeat: Claude receives current context and conversation history
 - Claude has a tool `send_message` to ping the user via Telegram
@@ -16,7 +15,6 @@ The user is Vals, based in southern France. He benefits from gentle external pro
 - Tone: interested friend/colleague, not productivity app
 
 ## Architecture
-
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   Daemon Vigil                      │
@@ -36,7 +34,6 @@ The user is Vals, based in southern France. He benefits from gentle external pro
 ```
 
 ## Tech Stack
-
 - **Language:** Python 3.11+
 - **Scheduler:** APScheduler (built into app, not system cron)
 - **Claude API:** anthropic Python SDK
@@ -162,15 +159,14 @@ TELEGRAM_BOT_TOKEN=123456:ABC...
 
 ### Startup
 1. Load config and .env
-2. Initialize SQLite (create tables if needed)
 3. Start Telegram bot (polling)
 4. Start APScheduler with heartbeat job
 5. Block on both (asyncio)
 
 ### Heartbeat Cycle
 1. Scheduler triggers every N minutes
-2. Load recent messages from DB (last 50 or configurable)
-3. Load scratchpad notes
+2. Load recent messages from json (last 50 or configurable)
+3. Load scratchpad notes from json
 4. Build Claude prompt with context
 5. Call Claude API with `send_message` tool available
 6. If Claude calls tool: send message via Telegram, log to DB
@@ -178,24 +174,9 @@ TELEGRAM_BOT_TOKEN=123456:ABC...
 
 ### User Message (via Telegram)
 1. Bot receives message
-2. Log to DB as role='user'
 3. Immediately trigger a Claude cycle (not waiting for heartbeat)
-4. Claude responds, logged as role='assistant'
+4. Claude responds
 5. Send response via Telegram
-
-## Implementation Order
-
-1. **Project scaffolding:** Create directory structure, requirements.txt, .env.example
-2. **Config loading:** Implement `src/config.py`
-3. **Storage:** Implement `src/storage.py` with JSON read/write helpers
-4. **Telegram bot:** Implement `src/telegram_bot.py`, verify it can send/receive
-5. **Claude integration:** Implement `src/claude.py` with tool handling
-6. **Scheduler:** Implement `src/scheduler.py` with APScheduler
-7. **Main entry point:** Wire everything together in `main.py`
-8. **System prompt:** Write `prompts/system.md`
-9. **Test locally**
-10. **Deploy to VPS**
-
 ## Deployment (Hetzner VPS)
 
 1. Provision smallest Hetzner cloud instance (CX11, ~€3/mo)
@@ -213,16 +194,3 @@ TELEGRAM_BOT_TOKEN=123456:ABC...
 - Multiple users
 - Scratchpad tool for Claude to write notes during conversation
 - Quiet hours configuration
-- Adaptive heartbeat (more frequent when user is active)
-
----
-
-## Notes for Implementation
-
-- Use `python-telegram-bot` v20+ (async version)
-- Use `anthropic` SDK v0.18+
-- APScheduler 3.x works fine, use `AsyncIOScheduler`
-- All async: bot polling, scheduler, and Claude calls should play nice together
-- Telegram polling + APScheduler in same asyncio loop
-
-Start with step 1. Get the skeleton running and talking to Telegram before adding Claude.

@@ -40,7 +40,6 @@ if TELEGRAM_CHAT_ID:
     TELEGRAM_CHAT_ID = int(TELEGRAM_CHAT_ID)
 
 # Config values with defaults
-HEARTBEAT_INTERVAL_MINUTES = config.get("heartbeat_interval_minutes", 15)
 MAX_CONTEXT_MESSAGES = config.get("max_context_messages", 50)
 
 
@@ -51,6 +50,15 @@ def get_claude_model() -> str:
     with open(CONFIG_FILE, 'r') as f:
         config = yaml.safe_load(f)
     return config.get("claude_model", "claude-sonnet-4-20250514")
+
+
+def get_heartbeat_interval() -> int:
+    """Get the current heartbeat interval from config (dynamically reloaded)."""
+    global config
+    # Reload config to get latest value
+    with open(CONFIG_FILE, 'r') as f:
+        config = yaml.safe_load(f)
+    return config.get("heartbeat_interval_minutes", 15)
 
 
 # Available models with friendly names

@@ -5,6 +5,7 @@ from typing import Optional
 from . import usage_tracker
 from . import config
 from . import claude
+from .scheduler import HeartbeatScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +41,13 @@ async def handle_command(command: str, telegram_bot, chat_id: int) -> bool:
         await handle_heartbeat(args, telegram_bot, chat_id)
         return True
 
-    # Add more commands here in the future
-    # elif cmd == "help":
-    #     await handle_help(telegram_bot, chat_id)
-    #     return True
+    elif cmd == "help":
+        await handle_help(telegram_bot, chat_id)
+        return True
+
+    elif cmd == "clear":
+        await handle_clear(telegram_bot, chat_id)
+        return True
 
     # Unknown command - return False to silently ignore
     return False
@@ -124,7 +128,7 @@ async def handle_heartbeat(args: str, telegram_bot, chat_id: int) -> None:
     - off: Disable automatic heartbeats
     - status: Show heartbeat status
     """
-    from main import DaemonVigil
+    from .app import DaemonVigil
 
     subcommand = args.strip().lower() if args else "test"
 
@@ -194,21 +198,94 @@ async def handle_heartbeat(args: str, telegram_bot, chat_id: int) -> None:
             response = "❌ Scheduler not available"
         await telegram_bot.send_message(response, chat_id)
 
+    elif subcommand.startswith("interval"):
+        # Handle ...heartbeat interval <minutes>
+        # Extract the minutes from args (format: "interval <minutes>")
+        parts = args.split()
+        if len(parts) < 2:
+            response = "❌ Usage: ...heartbeat interval <minutes>\n\nExample: ...heartbeat interval 30"
+            await telegram_bot.send_message(response, chat_id)
+            return
+
+        try:
+            minutes = int(parts[1])
+            if minutes < 1:
+                response = "❌ Interval must be at least 1 minute"
+                await telegram_bot.send_message(response, chat_id)
+                return
+
+            # Update config
+            config.update_config("heartbeat_interval_minutes", minutes)
+
+            # Restart scheduler with new interval
+            app = DaemonVigil.get_instance()
+            if app and app.scheduler:
+                app.scheduler.stop()
+                app.scheduler = HeartbeatScheduler(app.telegram_bot)
+                app.scheduler.start()
+                response = f"✅ Heartbeat interval changed to {minutes} minutes\n\nScheduler restarted with new interval."
+                logger.info(f"Heartbeat interval changed to {minutes} minutes")
+            else:
+                response = "❌ Scheduler not available"
+
+            await telegram_bot.send_message(response, chat_id)
+
+        except ValueError:
+            response = "❌ Invalid number. Usage: ...heartbeat interval <minutes>"
+            await telegram_bot.send_message(response, chat_id)
+
     else:
         response = "❌ Unknown heartbeat command\n\nAvailable:\n"
         response += "• ...heartbeat test - Run debug heartbeat\n"
         response += "• ...heartbeat on - Enable automatic heartbeats\n"
         response += "• ...heartbeat off - Disable automatic heartbeats\n"
-        response += "• ...heartbeat status - Show status"
+        response += "• ...heartbeat status - Show status\n"
+        response += "• ...heartbeat interval <minutes> - Change interval"
         await telegram_bot.send_message(response, chat_id)
 
 
-# Future command handlers can be added here
-# async def handle_help(telegram_bot, chat_id: int) -> None:
-#     """Handle the ...help command."""
-#     help_text = """
-# Available commands:
-# ...status - Show current model and API costs
-# ...help - Show this help message
-#     """
-#     await telegram_bot.send_message(help_text.strip(), chat_id)
+async def handle_help(telegram_bot, chat_id: int) -> None:
+    """Handle the ...help command."""
+    help_text = """📖 Available Commands
+
+**Status & Information**
+• ...status - Show model, costs, context, heartbeat status
+• ...help - Show this help message
+
+**Model Switching**
+• ...model - Show current model and options
+• ...model <name> - Switch model (sonnet/opus/haiku)
+
+**Heartbeat Control**
+• ...heartbeat test - Manual debug heartbeat
+• ...heartbeat on - Enable automatic heartbeats
+• ...heartbeat off - Disable automatic heartbeats
+• ...heartbeat status - Show heartbeat status
+• ...heartbeat interval <minutes> - Change interval
+
+**Conversation**
+• ...clear - Clear conversation history"""
+
+    logger.info("Handling help command")
+    await telegram_bot.send_message(help_text, chat_id)
+
+
+async def handle_clear(telegram_bot, chat_id: int) -> None:
+    """Handle the ...clear command."""
+    from . import storage
+
+    logger.info("Handling clear command")
+
+    # Get current message counts before clearing
+    messages_before = len(storage.messages.get_recent_messages())
+    notes_before = len(storage.scratchpad.get_notes())
+
+    # Clear both message history and scratchpad
+    storage.messages.clear()
+    storage.scratchpad.clear()
+
+    response = f"✅ Conversation cleared\n\n"
+    response += f"Deleted {messages_before} messages and {notes_before} notes.\n\n"
+    response += "Starting fresh - Claude will have no memory of previous conversations."
+
+    await telegram_bot.send_message(response, chat_id)
