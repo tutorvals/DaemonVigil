@@ -67,6 +67,10 @@ class MessageStorage(JSONStorage):
         """Clear all messages (use with caution)."""
         self.write({"messages": []})
 
+    def clear(self):
+        """Alias for clear_messages()."""
+        self.clear_messages()
+
 
 class ScratchpadStorage(JSONStorage):
     """Storage for Claude's notes."""
@@ -91,6 +95,10 @@ class ScratchpadStorage(JSONStorage):
     def clear_notes(self):
         """Clear all notes (use with caution)."""
         self.write({"notes": []})
+
+    def clear(self):
+        """Alias for clear_notes()."""
+        self.clear_notes()
 
 
 # Global storage instances
