@@ -4,7 +4,6 @@
 Messages starting with "..." are interpreted as commands and NOT forwarded to Claude LLM.
 
 ## Architecture
-
 ### Message Flow
 ```
 User sends message
@@ -29,7 +28,6 @@ Skip Claude
 - **usage_tracker.py**: New module for cost tracking
 
 ## Command: ...status
-
 ### What It Returns
 1. Current model being used
 2. API costs for:
@@ -69,16 +67,3 @@ Total tokens today: 145K (120K in, 25K out)
 - Invalid command → Silent ignore (no response)
 - Command during active conversation → Still skip Claude
 
-## Future Commands (Not Implemented Yet)
-- `...help` - Show available commands
-- `...clear` - Clear conversation history
-- `...interval <minutes>` - Change heartbeat interval
-- `...pause` - Pause heartbeat temporarily
-- `...resume` - Resume heartbeat
-
-## Implementation Steps
-1. Create `src/usage_tracker.py` with cost calculation & logging
-2. Update `src/claude.py` to log usage after each API call
-3. Create `src/commands.py` with command handlers
-4. Update `src/telegram_bot.py` to intercept "..." commands
-5. Test with `...status` command

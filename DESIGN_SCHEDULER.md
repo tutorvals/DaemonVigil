@@ -1,14 +1,12 @@
 # Scheduler Enhancement Design
 
 ## Current Issues
-
 1. **Heartbeat not firing**: No heartbeat logs in production
 2. **Potential bug**: Scheduler may not be awaiting async job correctly
 3. **No control**: Can't pause/resume heartbeats
 4. **No time windows**: Always active, no quiet hours
 
 ## Proposed Architecture
-
 ### 1. Active/Inactive Time Windows
 
 **Configuration** (`config.yaml`):
@@ -30,7 +28,6 @@ active_hours:
 - Log when skipping due to time window
 
 ### 2. Manual Control Commands
-
 **...heartbeat test** (renamed from ...heartbeat):
 - Trigger immediate debug heartbeat
 - Shows reasoning, doesn't send message
@@ -53,7 +50,6 @@ active_hours:
 - Shows: active hours config
 
 ### 3. Custom Future Heartbeat (for Claude)
-
 **New tool for Claude**: `schedule_heartbeat`
 ```python
 {
@@ -82,7 +78,6 @@ Claude calls: schedule_heartbeat(minutes_from_now=75, reason="Check in after run
 ```
 
 ### 4. Scheduler State Management
-
 **State file** (`data/scheduler_state.json`):
 ```json
 {
