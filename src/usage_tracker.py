@@ -1,11 +1,14 @@
 """API usage tracking and cost calculation."""
 import json
+import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
 from typing import Dict, Optional
 
 from . import config
+
+logger = logging.getLogger(__name__)
 
 # Pricing per million tokens (as of Dec 2025)
 PRICING = {
@@ -17,6 +20,7 @@ PRICING = {
 }
 
 USAGE_FILE = config.DATA_DIR / "api_usage.jsonl"
+THRESHOLD_STATE_FILE = config.DATA_DIR / "billing_thresholds.json"
 
 
 def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> Dict:
@@ -110,6 +114,156 @@ def get_usage_stats(days: int) -> Dict:
         "output_tokens": total_output_tokens,
         "request_count": request_count
     }
+
+
+def get_daily_total() -> float:
+    """
+    Get total spending for today (UTC).
+
+    Returns:
+        Total cost in dollars for today
+    """
+    today_stats = get_usage_stats(1)
+    return today_stats["total_cost"]
+
+
+def load_threshold_state() -> Dict:
+    """
+    Load threshold state from disk and reset if it's a new day.
+
+    Returns:
+        dict with 'last_reset_date' and 'notified_thresholds' list
+    """
+    from datetime import timezone
+    today = datetime.now(timezone.utc).date().isoformat()
+
+    # Try to load existing state
+    if THRESHOLD_STATE_FILE.exists():
+        try:
+            with open(THRESHOLD_STATE_FILE, 'r') as f:
+                state = json.load(f)
+
+            # Check if it's a new day - reset if so
+            if state.get("last_reset_date") != today:
+                state = {
+                    "last_reset_date": today,
+                    "notified_thresholds": []
+                }
+                save_threshold_state(state)
+
+            return state
+
+        except (json.JSONDecodeError, KeyError):
+            pass  # Fall through to create new state
+
+    # Create new state
+    state = {
+        "last_reset_date": today,
+        "notified_thresholds": []
+    }
+    save_threshold_state(state)
+    return state
+
+
+def save_threshold_state(state: Dict) -> None:
+    """
+    Save threshold state to disk.
+
+    Args:
+        state: dict with 'last_reset_date' and 'notified_thresholds'
+    """
+    with open(THRESHOLD_STATE_FILE, 'w') as f:
+        json.dump(state, f, indent=2)
+
+
+def check_threshold_crossed(previous_total: float, new_total: float,
+                            notified_thresholds: list) -> Optional[int]:
+    """
+    Check if a new dollar threshold was crossed.
+
+    Args:
+        previous_total: Total cost before the latest API call
+        new_total: Total cost after the latest API call
+        notified_thresholds: List of thresholds already notified today
+
+    Returns:
+        The highest threshold number that was crossed (e.g., 3 for $3),
+        or None if no new threshold was crossed
+    """
+    import math
+
+    # Find the highest threshold crossed
+    previous_threshold = math.floor(previous_total)
+    new_threshold = math.floor(new_total)
+
+    # Check if we crossed into a new dollar threshold
+    if new_threshold > previous_threshold:
+        # Find the highest new threshold not yet notified
+        for threshold in range(new_threshold, previous_threshold, -1):
+            if threshold > 0 and threshold not in notified_thresholds:
+                return threshold
+
+    return None
+
+
+async def check_and_notify_threshold(telegram_bot, last_cost: float, chat_id: int = None) -> None:
+    """
+    Check if a threshold was crossed and send notification if needed.
+
+    This should be called after each API call is logged.
+
+    Args:
+        telegram_bot: TelegramBot instance for sending messages
+        last_cost: Cost of the most recent API call
+        chat_id: Optional chat ID to send notification to
+    """
+    try:
+        # Load threshold state (auto-resets if new day)
+        state = load_threshold_state()
+
+        # Get current daily total
+        current_total = get_daily_total()
+
+        # Calculate previous total (before this API call)
+        previous_total = current_total - last_cost
+
+        # Check if threshold was crossed
+        threshold = check_threshold_crossed(
+            previous_total,
+            current_total,
+            state["notified_thresholds"]
+        )
+
+        if threshold is not None:
+            # Threshold crossed! Send notification
+            today_stats = get_usage_stats(1)
+
+            message = (
+                f"💰 Daily Billing Alert\n\n"
+                f"You've crossed the ${threshold} threshold today.\n\n"
+                f"Today's total: ${current_total:.2f} ({today_stats['request_count']} requests)\n\n"
+                f"Track usage with: ...status"
+            )
+
+            logger.info(f"Threshold ${threshold} crossed. Sending notification.")
+
+            # Send notification via Telegram
+            if telegram_bot:
+                await telegram_bot.send_message(message, chat_id=chat_id)
+            else:
+                logger.warning("Telegram bot not available, skipping threshold notification")
+
+            # Mark all crossed thresholds as notified (in case we jumped multiple)
+            for t in range(int(previous_total) + 1, threshold + 1):
+                if t not in state["notified_thresholds"]:
+                    state["notified_thresholds"].append(t)
+
+            # Save updated state
+            save_threshold_state(state)
+            logger.info(f"Updated threshold state: {state['notified_thresholds']}")
+
+    except Exception as e:
+        logger.error(f"Error checking billing threshold: {e}", exc_info=True)
 
 
 def format_usage_report() -> str:

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Start Daemon Vigil in the background
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Activate venv if it exists
+if [ -f "venv/bin/activate" ]; then
+    source venv/bin/activate
+fi
+
+echo "Starting Daemon Vigil..."
+nohup python main.py --silent > daemon_vigil.log 2>&1 &
+PID=$!
+echo "$PID" > .daemon_vigil.pid
+echo "Daemon Vigil started (PID: $PID)"
+echo "Logs: tail -f $SCRIPT_DIR/daemon_vigil.log"
+echo "Stop:  kill $PID"

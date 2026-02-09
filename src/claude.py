@@ -151,6 +151,12 @@ async def process_heartbeat(telegram_bot, debug: bool = False) -> dict:
         usage_data["request_type"] = "heartbeat"
         usage_tracker.log_api_usage(usage_data)
 
+        # Check billing threshold
+        await usage_tracker.check_and_notify_threshold(
+            telegram_bot=telegram_bot,
+            last_cost=usage_data['total_cost']
+        )
+
         logger.info(f"API Usage - Input: {response.usage.input_tokens}, "
                    f"Output: {response.usage.output_tokens}, "
                    f"Cost: ${usage_data['total_cost']:.6f}")
@@ -251,6 +257,12 @@ async def respond_to_user(user_message: str, telegram_bot) -> None:
         usage_data["request_type"] = "user_response"
         usage_data["user_message_preview"] = user_message[:50]
         usage_tracker.log_api_usage(usage_data)
+
+        # Check billing threshold
+        await usage_tracker.check_and_notify_threshold(
+            telegram_bot=telegram_bot,
+            last_cost=usage_data['total_cost']
+        )
 
         logger.info(f"API Usage - Input: {response.usage.input_tokens}, "
                    f"Output: {response.usage.output_tokens}, "
