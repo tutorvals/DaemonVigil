@@ -11,7 +11,7 @@ import asyncio
 import logging
 import sys
 from src.telegram_bot import TelegramBot
-from src import storage
+from src.storage import get_user_storage
 
 # Configure logging
 logging.basicConfig(
@@ -23,17 +23,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def on_user_message(message: str, chat_id: int):
+async def on_user_message(message: str, user_id: str):
     """Handle incoming messages - just echo back for now."""
-    logger.info(f"Received message: '{message}' from chat_id: {chat_id}")
+    logger.info(f"Received message: '{message}' from user_id: {user_id}")
 
     # The message is already saved to storage by the bot handler
     # Let's send a simple response
     response = f"Got it! You said: '{message}'"
-    await bot.send_message(response, chat_id)
+    await bot.send_message(response, chat_id=int(user_id))
 
-    # Also log the response to storage
-    storage.messages.add_message("assistant", response)
+    # Also log the response to user's storage
+    user_storage = get_user_storage(user_id)
+    user_storage.messages.add_message("assistant", response)
     logger.info(f"Sent response: '{response}'")
 
 
@@ -61,10 +62,7 @@ async def main():
         await bot.stop()
 
         # Show what was saved
-        logger.info("\n=== Messages saved to JSON ===")
-        messages = storage.messages.get_recent_messages()
-        for msg in messages:
-            logger.info(f"[{msg['timestamp']}] {msg['role']}: {msg['content']}")
+        logger.info("\n=== Test complete ===")
 
 
 if __name__ == "__main__":

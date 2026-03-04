@@ -19,10 +19,18 @@ A proactive AI companion that checks in via Telegram. Runs on a heartbeat — pe
 - `config.yaml` — configuration (heartbeat interval, model, context size)
 - `src/` — source code (claude, telegram, scheduler, commands, storage, usage tracking)
 - `prompts/system.md` — system prompt for Claude
-- `data/` — runtime data (messages, scratchpad, API usage)
+- `data/` — runtime data (per-user storage in `data/users/<user_id>/`)
+- `scripts/migrate_to_multi_user.py` — migration script for existing single-user data
 
 ## Telegram Commands
 All commands start with `...` (three dots): `...status`, `...help`, `...model <name>`, `...heartbeat <on|off|test|status|interval N>`, `...clear`
+
+## Multi-User Architecture
+- Any Telegram user can message the bot; new users are auto-registered
+- Per-user data: `data/users/<user_id>/` (messages, scratchpad, config)
+- Per-user heartbeats with individual intervals and enable/disable
+- Global user registry: `data/users.json`
+- Migrate existing single-user data: `python scripts/migrate_to_multi_user.py`
 
 ## Deployment (VPS: vals@77.42.16.53)
 

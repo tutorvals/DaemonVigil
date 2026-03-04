@@ -41,6 +41,7 @@ if TELEGRAM_CHAT_ID:
 
 # Config values with defaults
 MAX_CONTEXT_MESSAGES = config.get("max_context_messages", 50)
+HEARTBEAT_INTERVAL_MINUTES = config.get("heartbeat_interval_minutes", 15)
 
 
 def get_claude_model() -> str:

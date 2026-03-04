@@ -4,9 +4,10 @@ import logging
 from datetime import datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from . import config
+from .storage import get_user_storage
 
 logger = logging.getLogger(__name__)
 
@@ -57,15 +58,20 @@ def log_api_usage(usage_data: Dict) -> None:
     Log API usage to JSONL file.
 
     Args:
-        usage_data: Dict containing usage and cost information
+        usage_data: Dict containing usage and cost information.
+                   Must include 'user_id' field for per-user tracking.
     """
+    if "user_id" not in usage_data:
+        logger.warning("Usage data missing user_id - cannot track per-user costs")
+        usage_data["user_id"] = "unknown"
+
     with open(USAGE_FILE, 'a') as f:
         f.write(json.dumps(usage_data) + '\n')
 
 
 def get_usage_stats(days: int) -> Dict:
     """
-    Get usage statistics for the last N days.
+    Get global usage statistics for the last N days (all users combined).
 
     Args:
         days: Number of days to look back
@@ -118,7 +124,8 @@ def get_usage_stats(days: int) -> Dict:
 
 def get_daily_total() -> float:
     """
-    Get total spending for today (UTC).
+    Get total spending for today (UTC) across all users.
+    Owner pays one bill for all users.
 
     Returns:
         Total cost in dollars for today
@@ -137,13 +144,11 @@ def load_threshold_state() -> Dict:
     from datetime import timezone
     today = datetime.now(timezone.utc).date().isoformat()
 
-    # Try to load existing state
     if THRESHOLD_STATE_FILE.exists():
         try:
             with open(THRESHOLD_STATE_FILE, 'r') as f:
                 state = json.load(f)
 
-            # Check if it's a new day - reset if so
             if state.get("last_reset_date") != today:
                 state = {
                     "last_reset_date": today,
@@ -154,9 +159,8 @@ def load_threshold_state() -> Dict:
             return state
 
         except (json.JSONDecodeError, KeyError):
-            pass  # Fall through to create new state
+            pass
 
-    # Create new state
     state = {
         "last_reset_date": today,
         "notified_thresholds": []
@@ -192,13 +196,10 @@ def check_threshold_crossed(previous_total: float, new_total: float,
     """
     import math
 
-    # Find the highest threshold crossed
     previous_threshold = math.floor(previous_total)
     new_threshold = math.floor(new_total)
 
-    # Check if we crossed into a new dollar threshold
     if new_threshold > previous_threshold:
-        # Find the highest new threshold not yet notified
         for threshold in range(new_threshold, previous_threshold, -1):
             if threshold > 0 and threshold not in notified_thresholds:
                 return threshold
@@ -206,7 +207,7 @@ def check_threshold_crossed(previous_total: float, new_total: float,
     return None
 
 
-async def check_and_notify_threshold(telegram_bot, last_cost: float, chat_id: int = None) -> None:
+async def check_and_notify_threshold(telegram_bot, last_cost: float, user_id: str = None) -> None:
     """
     Check if a threshold was crossed and send notification if needed.
 
@@ -215,19 +216,13 @@ async def check_and_notify_threshold(telegram_bot, last_cost: float, chat_id: in
     Args:
         telegram_bot: TelegramBot instance for sending messages
         last_cost: Cost of the most recent API call
-        chat_id: Optional chat ID to send notification to
+        user_id: User ID to send notification to (optional, falls back to config)
     """
     try:
-        # Load threshold state (auto-resets if new day)
         state = load_threshold_state()
-
-        # Get current daily total
         current_total = get_daily_total()
-
-        # Calculate previous total (before this API call)
         previous_total = current_total - last_cost
 
-        # Check if threshold was crossed
         threshold = check_threshold_crossed(
             previous_total,
             current_total,
@@ -235,30 +230,27 @@ async def check_and_notify_threshold(telegram_bot, last_cost: float, chat_id: in
         )
 
         if threshold is not None:
-            # Threshold crossed! Send notification
             today_stats = get_usage_stats(1)
 
             message = (
-                f"💰 Daily Billing Alert\n\n"
-                f"You've crossed the ${threshold} threshold today.\n\n"
+                f"Daily Billing Alert\n\n"
+                f"Crossed the ${threshold} threshold today.\n\n"
                 f"Today's total: ${current_total:.2f} ({today_stats['request_count']} requests)\n\n"
                 f"Track usage with: ...status"
             )
 
             logger.info(f"Threshold ${threshold} crossed. Sending notification.")
 
-            # Send notification via Telegram
             if telegram_bot:
+                chat_id = int(user_id) if user_id else config.TELEGRAM_CHAT_ID
                 await telegram_bot.send_message(message, chat_id=chat_id)
             else:
                 logger.warning("Telegram bot not available, skipping threshold notification")
 
-            # Mark all crossed thresholds as notified (in case we jumped multiple)
             for t in range(int(previous_total) + 1, threshold + 1):
                 if t not in state["notified_thresholds"]:
                     state["notified_thresholds"].append(t)
 
-            # Save updated state
             save_threshold_state(state)
             logger.info(f"Updated threshold state: {state['notified_thresholds']}")
 
@@ -266,51 +258,183 @@ async def check_and_notify_threshold(telegram_bot, last_cost: float, chat_id: in
         logger.error(f"Error checking billing threshold: {e}", exc_info=True)
 
 
-def format_usage_report() -> str:
+def get_user_usage_stats(user_id: str, days: int) -> Dict:
     """
-    Format a usage report for display.
+    Get usage statistics for a SPECIFIC user over last N days.
+
+    Args:
+        user_id: User ID to filter by
+        days: Number of days to look back
 
     Returns:
-        Formatted string with usage statistics
+        dict with aggregated usage statistics for that user
     """
-    from . import storage
-    from .app import DaemonVigil
+    if not USAGE_FILE.exists():
+        return {
+            "user_id": user_id,
+            "total_cost": 0.0,
+            "total_tokens": 0,
+            "request_count": 0,
+            "input_tokens": 0,
+            "output_tokens": 0
+        }
 
-    today_stats = get_usage_stats(1)
-    week_stats = get_usage_stats(7)
-    month_stats = get_usage_stats(30)
+    from datetime import timezone
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
-    report = "📊 Status Report\n\n"
-    report += f"Model: {config.get_claude_model()}\n\n"
+    total_input_tokens = 0
+    total_output_tokens = 0
+    total_cost = 0.0
+    request_count = 0
 
-    # Heartbeat status
+    with open(USAGE_FILE, 'r') as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+
+                if entry.get("user_id") != user_id:
+                    continue
+
+                entry_time = datetime.fromisoformat(entry["timestamp"].replace('Z', '+00:00'))
+
+                if entry_time < cutoff_date:
+                    continue
+
+                total_input_tokens += entry["input_tokens"]
+                total_output_tokens += entry["output_tokens"]
+                total_cost += entry["total_cost"]
+                request_count += 1
+
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+
+    return {
+        "user_id": user_id,
+        "total_cost": round(total_cost, 4),
+        "total_tokens": total_input_tokens + total_output_tokens,
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens,
+        "request_count": request_count
+    }
+
+
+def get_all_users_usage_stats(days: int) -> List[Dict]:
+    """
+    Get usage statistics for ALL users (admin function).
+
+    Args:
+        days: Number of days to look back
+
+    Returns:
+        List of dicts with per-user stats, sorted by cost descending
+    """
+    if not USAGE_FILE.exists():
+        return []
+
+    from datetime import timezone
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+
+    user_stats = defaultdict(lambda: {
+        "total_cost": 0.0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "request_count": 0
+    })
+
+    with open(USAGE_FILE, 'r') as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+                user_id = entry.get("user_id")
+
+                if not user_id or user_id == "unknown":
+                    continue
+
+                entry_time = datetime.fromisoformat(
+                    entry["timestamp"].replace('Z', '+00:00')
+                )
+
+                if entry_time < cutoff_date:
+                    continue
+
+                user_stats[user_id]["total_cost"] += entry["total_cost"]
+                user_stats[user_id]["input_tokens"] += entry["input_tokens"]
+                user_stats[user_id]["output_tokens"] += entry["output_tokens"]
+                user_stats[user_id]["request_count"] += 1
+
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+
+    result = []
+    for user_id, stats in user_stats.items():
+        result.append({
+            "user_id": user_id,
+            "total_cost": round(stats["total_cost"], 4),
+            "total_tokens": stats["input_tokens"] + stats["output_tokens"],
+            "input_tokens": stats["input_tokens"],
+            "output_tokens": stats["output_tokens"],
+            "request_count": stats["request_count"]
+        })
+
+    result.sort(key=lambda x: x["total_cost"], reverse=True)
+    return result
+
+
+def format_usage_report(user_id: str) -> str:
+    """
+    Format a usage report for a specific user.
+
+    Args:
+        user_id: User ID to generate report for
+
+    Returns:
+        Formatted string with usage statistics for that user
+    """
+    from main import DaemonVigil
+
+    # Get user-specific storage and config
+    user_storage = get_user_storage(user_id)
+    user_config = user_storage.config.get_config()
+
+    # Get user-specific usage stats
+    today_stats = get_user_usage_stats(user_id, 1)
+    week_stats = get_user_usage_stats(user_id, 7)
+    month_stats = get_user_usage_stats(user_id, 30)
+
+    report = "Status Report\n\n"
+    report += f"Model: {user_config.model}\n\n"
+
+    # Heartbeat status (user-specific)
     app = DaemonVigil.get_instance()
     if app and app.scheduler:
-        status = app.scheduler.get_status()
-        report += "💓 Heartbeat:\n"
-        report += f"State: {'✅ Enabled' if status['enabled'] else '🔇 Disabled'}\n"
-        report += f"Interval: {status['interval_minutes']} minutes\n"
-        if status['next_run']:
-            report += f"Next run: {status['next_run'].strftime('%H:%M:%S UTC')}\n"
-        report += "\n"
+        try:
+            status = app.scheduler.get_user_status(user_id)
+            report += "Heartbeat:\n"
+            report += f"State: {'Enabled' if status.get('enabled', True) else 'Disabled'}\n"
+            report += f"Interval: {user_config.heartbeat_interval_minutes} minutes\n"
+            if status.get('next_run'):
+                report += f"Next run: {status['next_run'].strftime('%H:%M:%S UTC')}\n"
+            report += "\n"
+        except (AttributeError, KeyError):
+            report += "Heartbeat:\n"
+            report += f"Interval: {user_config.heartbeat_interval_minutes} minutes\n\n"
 
-    # Context information
-    messages = storage.messages.get_recent_messages()
-    notes = storage.scratchpad.get_notes()
+    # User-specific context information
+    messages = user_storage.messages.get_recent_messages()
+    notes = user_storage.scratchpad.get_notes()
 
-    report += "📚 Context:\n"
+    report += "Context:\n"
     report += f"Messages in history: {len(messages)}\n"
     report += f"Scratchpad notes: {len(notes)}\n"
 
     if notes:
         last_note = notes[-1]
-        # Truncate if too long
         note_preview = last_note['note']
         if len(note_preview) > 80:
             note_preview = note_preview[:77] + "..."
         report += f"Last note: {note_preview}\n"
 
-    report += "\n💰 API Costs:\n"
+    report += "\nAPI Costs (Your Usage):\n"
 
     if today_stats["request_count"] == 0:
         report += "No API usage recorded yet\n"
@@ -319,7 +443,7 @@ def format_usage_report() -> str:
         report += f"This Week:  ${week_stats['total_cost']:.4f} ({week_stats['request_count']} requests)\n"
         report += f"This Month: ${month_stats['total_cost']:.4f} ({month_stats['request_count']} requests)\n"
 
-        report += "\n📈 Usage Today:\n"
+        report += "\nUsage Today:\n"
         report += f"Total tokens: {today_stats['total_tokens']:,} "
         report += f"({today_stats['input_tokens']:,} in, {today_stats['output_tokens']:,} out)"
 
