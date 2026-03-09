@@ -1,16 +1,20 @@
-"""Claude integration via CLI subprocess."""
+"""Claude integration via the Anthropic Agent SDK."""
 import asyncio
 import json
 import logging
 import os
 import time
+from pathlib import Path
 from datetime import datetime
+
+from claude_agent_sdk import ClaudeAgentOptions, query
 
 from . import config
 from .storage import UserStorageManager, UserConfig
 from . import usage_tracker
 
 logger = logging.getLogger(__name__)
+CLAUDE_CLI_PATH = Path.home() / ".local" / "bin" / "claude"
 
 # JSON schema for heartbeat structured output
 HEARTBEAT_SCHEMA = json.dumps({
@@ -55,7 +59,120 @@ def get_current_time_str() -> str:
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-async def _run_claude_cli(
+def _extract_text_from_sdk_message(message) -> str:
+    """Extract plain text content from an SDK message."""
+    content = getattr(message, "content", None)
+    if not content:
+        return ""
+
+    parts = []
+    for block in content:
+        text = getattr(block, "text", None)
+        if text:
+            parts.append(text)
+
+    return "\n".join(parts).strip()
+
+
+def _normalize_usage(usage) -> dict:
+    """Convert SDK usage objects into the dict shape expected elsewhere."""
+    if isinstance(usage, dict):
+        return usage
+
+    if usage is None:
+        return {}
+
+    return {
+        "input_tokens": getattr(usage, "input_tokens", 0),
+        "output_tokens": getattr(usage, "output_tokens", 0),
+        "cache_creation_input_tokens": getattr(usage, "cache_creation_input_tokens", 0),
+        "cache_read_input_tokens": getattr(usage, "cache_read_input_tokens", 0),
+    }
+
+
+def _sdk_stderr_logger(line: str) -> None:
+    """Route Claude Agent SDK stderr into the app log."""
+    text = line.rstrip()
+    if text:
+        logger.error("Claude SDK stderr: %s", text)
+
+
+def _build_sdk_env() -> dict[str, str]:
+    """Build SDK environment while stripping API-key auth to prefer Claude Code auth."""
+    env = os.environ.copy()
+    env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("ANTHROPIC_AUTH_TOKEN", None)
+    return env
+
+
+def _summarize_sdk_message(message) -> dict:
+    """Build a loggable summary of an SDK message."""
+    summary = {
+        "type": getattr(message, "type", None),
+        "class": message.__class__.__name__,
+    }
+
+    for attr in ("subtype", "session_id", "is_error", "result"):
+        if hasattr(message, attr):
+            value = getattr(message, attr)
+            if isinstance(value, str):
+                summary[attr] = value[:500]
+            else:
+                summary[attr] = value
+
+    if hasattr(message, "usage"):
+        summary["usage"] = _normalize_usage(getattr(message, "usage", None))
+
+    text = _extract_text_from_sdk_message(message)
+    if text:
+        summary["text_preview"] = text[:500]
+
+    return summary
+
+
+async def _collect_sdk_response(prompt: str, options: ClaudeAgentOptions) -> dict:
+    """Run a Claude Agent SDK query and normalize the final response shape."""
+    assistant_parts = []
+    result_message = None
+
+    async for message in query(prompt=prompt, options=options):
+        logger.info("Claude SDK message: %s", _summarize_sdk_message(message))
+        message_type = getattr(message, "type", None)
+
+        if message_type == "assistant":
+            text = _extract_text_from_sdk_message(message)
+            if text:
+                assistant_parts.append(text)
+        elif message_type == "result":
+            result_message = message
+
+    if result_message is None:
+        raise RuntimeError("Claude Agent SDK returned no result message")
+
+    if getattr(result_message, "is_error", False):
+        raise RuntimeError(
+            f"Claude Agent SDK returned an error result: "
+            f"{getattr(result_message, 'subtype', 'error')}"
+        )
+
+    usage = _normalize_usage(getattr(result_message, "usage", None))
+    result_text = getattr(result_message, "result", "") or "\n".join(assistant_parts).strip()
+
+    return {
+        "result": result_text,
+        "structured_output": getattr(result_message, "structured_output", None),
+        "session_id": getattr(result_message, "session_id", None),
+        "usage": usage,
+        "modelUsage": usage,
+        "duration_ms": getattr(result_message, "duration_ms", None),
+        "duration_api_ms": getattr(result_message, "duration_api_ms", None),
+        "total_cost_usd": getattr(result_message, "total_cost_usd", None),
+        "subtype": getattr(result_message, "subtype", None),
+        "is_error": getattr(result_message, "is_error", False),
+    }
+
+
+async def _run_claude_sdk(
     prompt: str,
     system_prompt: str,
     model: str,
@@ -63,7 +180,7 @@ async def _run_claude_cli(
     timeout: int = 120
 ) -> dict:
     """
-    Run claude CLI non-interactively and return parsed JSON output.
+    Run Claude via the Agent SDK and return a normalized response.
 
     Args:
         prompt: The user prompt to send
@@ -73,69 +190,76 @@ async def _run_claude_cli(
         timeout: Timeout in seconds
 
     Returns:
-        dict with keys: result, usage, model, session_id
+        dict with keys: result, usage, modelUsage, session_id
 
     Raises:
-        RuntimeError: On CLI failure or timeout
+        RuntimeError: On SDK failure or timeout
     """
-    cmd = [
-        'claude', '-p', prompt,
-        '--output-format', 'json',
-        '--no-session-persistence',
-        '--system-prompt', system_prompt,
-    ]
-
+    output_format = None
     if json_schema:
-        cmd.extend(['--json-schema', json_schema])
+        output_format = {
+            "type": "json_schema",
+            "schema": json.loads(json_schema),
+        }
 
-    # Allow running even if launched from within a claude session
-    env = os.environ.copy()
-    env.pop('CLAUDE_CODE', None)
-    env.pop('CLAUDECODE', None)
-    env.pop('ANTHROPIC_API_KEY', None)
+    sdk_env = _build_sdk_env()
 
-    logger.debug(f"CLI command: {' '.join(cmd[:6])}... (prompt length: {len(prompt)} chars)")
-
-    start_time = time.monotonic()
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-        env=env
+    options = ClaudeAgentOptions(
+        system_prompt=system_prompt,
+        model=model,
+        output_format=output_format,
+        cwd=str(config.ROOT_DIR),
+        cli_path=str(CLAUDE_CLI_PATH),
+        env=sdk_env,
+        permission_mode="bypassPermissions",
+        max_turns=1,
+        extra_args={"no-session-persistence": None},
+        stderr=_sdk_stderr_logger,
     )
 
+    logger.debug(
+        "Agent SDK query: model=%s prompt_length=%s system_prompt_length=%s",
+        model,
+        len(prompt),
+        len(system_prompt),
+    )
+    logger.info(
+        "Agent SDK options: %s",
+        {
+            "model": model,
+            "cwd": str(config.ROOT_DIR),
+            "cli_path": str(CLAUDE_CLI_PATH),
+            "permission_mode": "bypassPermissions",
+            "max_turns": 1,
+            "extra_args": {"no-session-persistence": None},
+            "has_output_format": output_format is not None,
+            "env": {
+                "HOME": os.environ.get("HOME"),
+                "PATH": os.environ.get("PATH"),
+                "CLAUDE_CONFIG_DIR": os.environ.get("CLAUDE_CONFIG_DIR"),
+                "ANTHROPIC_API_KEY_present": bool(sdk_env.get("ANTHROPIC_API_KEY")),
+                "ANTHROPIC_AUTH_TOKEN_present": bool(sdk_env.get("ANTHROPIC_AUTH_TOKEN")),
+                "CLAUDE_CODE_OAUTH_TOKEN_present": bool(sdk_env.get("CLAUDE_CODE_OAUTH_TOKEN")),
+            },
+        },
+    )
+
+    start_time = time.monotonic()
     try:
-        stdout, stderr = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout
+        response = await asyncio.wait_for(
+            _collect_sdk_response(prompt=prompt, options=options),
+            timeout=timeout,
         )
     except asyncio.TimeoutError:
-        proc.kill()
         elapsed = time.monotonic() - start_time
-        raise RuntimeError(f"Claude CLI timed out after {elapsed:.1f}s (limit: {timeout}s)")
+        raise RuntimeError(f"Claude Agent SDK timed out after {elapsed:.1f}s (limit: {timeout}s)")
+    except Exception as e:
+        elapsed = time.monotonic() - start_time
+        raise RuntimeError(f"Claude Agent SDK failed after {elapsed:.1f}s: {e}") from e
 
     elapsed = time.monotonic() - start_time
-    stderr_text = stderr.decode().strip()
-    if stderr_text:
-        logger.debug(f"CLI stderr: {stderr_text[:500]}")
-
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"Claude CLI failed (exit {proc.returncode}) after {elapsed:.1f}s: "
-            f"stderr={stderr_text} stdout={stdout.decode()[:500]}"
-        )
-
-    logger.debug(f"CLI completed in {elapsed:.1f}s (exit 0)")
-
-    try:
-        parsed = json.loads(stdout.decode())
-    except json.JSONDecodeError as e:
-        raw = stdout.decode()
-        raise RuntimeError(
-            f"CLI returned invalid JSON after {elapsed:.1f}s: {e}. "
-            f"Raw output: {raw[:500]}"
-        )
-
-    return parsed
+    logger.debug("Agent SDK query completed in %.1fs", elapsed)
+    return response
 
 
 def load_system_prompt() -> str:
@@ -230,18 +354,18 @@ async def process_heartbeat(
     result["debug_info"]["model"] = user_config.model
     result["debug_info"]["system_prompt_length"] = len(full_system_prompt)
 
-    # Call Claude CLI
+    # Call Claude Agent SDK
     try:
         model = user_config.model
-        cli_response = await _run_claude_cli(
+        sdk_response = await _run_claude_sdk(
             prompt=prompt,
             system_prompt=full_system_prompt,
             model=model,
             json_schema=HEARTBEAT_SCHEMA
         )
 
-        # Extract usage from CLI response (prefer modelUsage over usage)
-        usage = cli_response.get("modelUsage", cli_response.get("usage", {}))
+        # Extract usage from SDK response
+        usage = sdk_response.get("modelUsage", sdk_response.get("usage", {}))
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
 
@@ -273,17 +397,16 @@ async def process_heartbeat(
         result["debug_info"]["cost"] = usage_data['total_cost']
         result["debug_info"]["elapsed_seconds"] = round(elapsed, 1)
 
-        # Parse structured JSON decision — CLI puts it in structured_output, not result
-        raw_result = cli_response.get("structured_output", cli_response.get("result", ""))
+        raw_result = sdk_response.get("structured_output", sdk_response.get("result", ""))
         logger.info(f"Heartbeat output for user {user_id} (type={type(raw_result).__name__}): {str(raw_result)[:500]}")
 
         try:
             decision = json.loads(raw_result)
         except (json.JSONDecodeError, TypeError):
-            # If result is already a dict (some CLI versions)
+            # Structured output may already be deserialized by the SDK.
             decision = raw_result if isinstance(raw_result, dict) else {
                 "action": "stay_silent",
-                "reasoning": f"Failed to parse CLI output: {str(raw_result)[:200]}"
+                "reasoning": f"Failed to parse SDK output: {str(raw_result)[:200]}"
             }
             logger.warning(f"Failed to parse heartbeat decision as JSON for user {user_id}, "
                           f"type={type(raw_result).__name__}")
@@ -306,7 +429,7 @@ async def process_heartbeat(
             logger.info("Claude chose not to send a message this cycle")
 
     except Exception as e:
-        logger.error(f"Error in Claude CLI call: {e}", exc_info=True)
+        logger.error(f"Error in Claude Agent SDK call: {e}", exc_info=True)
         result["error"] = str(e)
 
     return result
@@ -365,17 +488,17 @@ async def respond_to_user(
     # Build prompt with conversation history
     prompt = f"Here is the recent conversation:\n{conversation_text}\n\nRespond to the user's latest message."
 
-    # Call Claude CLI
+    # Call Claude Agent SDK
     try:
         model = user_config.model
-        cli_response = await _run_claude_cli(
+        sdk_response = await _run_claude_sdk(
             prompt=prompt,
             system_prompt=full_system_prompt,
             model=model
         )
 
-        # Extract usage (prefer modelUsage over usage)
-        usage = cli_response.get("modelUsage", cli_response.get("usage", {}))
+        # Extract usage from SDK response
+        usage = sdk_response.get("modelUsage", sdk_response.get("usage", {}))
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
 
@@ -402,10 +525,10 @@ async def respond_to_user(
                    f"Cost: ${usage_data['total_cost']:.6f}")
 
         # Extract text response
-        response_text = cli_response.get("result", "") or ""
+        response_text = sdk_response.get("result", "") or ""
 
         if not response_text:
-            logger.warning(f"Empty 'result' for user {user_id}, CLI keys: {list(cli_response.keys())}")
+            logger.warning(f"Empty 'result' for user {user_id}, SDK keys: {list(sdk_response.keys())}")
 
         if response_text:
             logger.info(f"Claude response to user {user_id}: {response_text[:50]}...")
@@ -415,5 +538,5 @@ async def respond_to_user(
             logger.warning(f"Claude returned empty response for user {user_id}")
 
     except Exception as e:
-        logger.error(f"Error in Claude CLI call for user {user_id}: {e}", exc_info=True)
+        logger.error(f"Error in Claude Agent SDK call for user {user_id}: {e}", exc_info=True)
         raise

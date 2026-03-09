@@ -1,7 +1,7 @@
-"""Test Claude CLI integration.
+"""Test Claude Agent SDK integration.
 
 This script tests:
-1. Basic Claude CLI connectivity
+1. Basic Claude Agent SDK connectivity
 2. Structured JSON output (heartbeat decision-making)
 3. Context loading from conversation history
 4. Scratchpad integration
@@ -13,7 +13,7 @@ import json
 import logging
 import sys
 
-from src.claude import _run_claude_cli, HEARTBEAT_SCHEMA
+from src.claude import _run_claude_sdk, HEARTBEAT_SCHEMA
 from src.storage import get_user_storage
 
 # Configure logging
@@ -30,12 +30,12 @@ TEST_USER_ID = "test_user"
 
 
 async def test_basic_response():
-    """Test 1: Basic CLI call."""
+    """Test 1: Basic SDK call."""
     logger.info("\n=== Test 1: Basic Claude Response ===")
 
     try:
-        response = await _run_claude_cli(
-            prompt="Say 'CLI test successful' in exactly those words.",
+        response = await _run_claude_sdk(
+            prompt="Say 'SDK test successful' in exactly those words.",
             system_prompt="You are a helpful assistant.",
             model=TEST_MODEL
         )
@@ -67,14 +67,14 @@ Output a JSON decision with:
 - reasoning: Brief explanation of your decision"""
 
     try:
-        response = await _run_claude_cli(
+        response = await _run_claude_sdk(
             prompt="Heartbeat check - review context and decide.",
             system_prompt=system_prompt,
             model=TEST_MODEL,
             json_schema=HEARTBEAT_SCHEMA
         )
 
-        raw_result = response.get("result", "")
+        raw_result = response.get("structured_output", response.get("result", ""))
         try:
             decision = json.loads(raw_result)
         except (json.JSONDecodeError, TypeError):
@@ -117,7 +117,7 @@ async def test_context_loading():
     logger.info(f"Loaded {len(recent_messages)} messages from storage")
 
     try:
-        response = await _run_claude_cli(
+        response = await _run_claude_sdk(
             prompt=f"Here is the conversation:\n{conversation}\n\nRespond to the user's latest message.",
             system_prompt="You are a helpful assistant. Answer based on conversation history.",
             model=TEST_MODEL
@@ -148,7 +148,7 @@ async def test_scratchpad():
         context += f"- {note['note']}\n"
 
     try:
-        response = await _run_claude_cli(
+        response = await _run_claude_sdk(
             prompt="What do you remember about what I'm working on?",
             system_prompt=f"You are Daemon Vigil.\n\n{context}",
             model=TEST_MODEL
@@ -164,9 +164,9 @@ async def test_scratchpad():
 
 
 async def main():
-    logger.info("=== Claude CLI Integration Test Suite ===")
+    logger.info("=== Claude Agent SDK Integration Test Suite ===")
     logger.info(f"Using model: {TEST_MODEL} (cheap for testing)")
-    logger.info("Uses your Claude Code OAuth subscription\n")
+    logger.info("Uses your Claude Code environment and subscription fallback\n")
 
     results = []
 
@@ -179,7 +179,7 @@ async def main():
     logger.info(f"Passed: {sum(results)}/{len(results)}")
 
     if all(results):
-        logger.info("All tests passed! Claude CLI integration is working.")
+        logger.info("All tests passed! Claude Agent SDK integration is working.")
         logger.info("\nNext: Run 'python main.py' to test the full system")
     else:
         logger.error("Some tests failed. Check the errors above.")
