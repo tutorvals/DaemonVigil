@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from datetime import datetime
 
 from . import config
@@ -93,6 +94,9 @@ async def _run_claude_cli(
     env.pop('CLAUDECODE', None)
     env.pop('ANTHROPIC_API_KEY', None)
 
+    logger.debug(f"CLI command: {' '.join(cmd[:6])}... (prompt length: {len(prompt)} chars)")
+
+    start_time = time.monotonic()
     proc = await asyncio.create_subprocess_exec(
         *cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -106,15 +110,32 @@ async def _run_claude_cli(
         )
     except asyncio.TimeoutError:
         proc.kill()
-        raise RuntimeError(f"Claude CLI timed out after {timeout}s")
+        elapsed = time.monotonic() - start_time
+        raise RuntimeError(f"Claude CLI timed out after {elapsed:.1f}s (limit: {timeout}s)")
+
+    elapsed = time.monotonic() - start_time
+    stderr_text = stderr.decode().strip()
+    if stderr_text:
+        logger.debug(f"CLI stderr: {stderr_text[:500]}")
 
     if proc.returncode != 0:
         raise RuntimeError(
-            f"Claude CLI failed (exit {proc.returncode}): "
-            f"stderr={stderr.decode()} stdout={stdout.decode()[:500]}"
+            f"Claude CLI failed (exit {proc.returncode}) after {elapsed:.1f}s: "
+            f"stderr={stderr_text} stdout={stdout.decode()[:500]}"
         )
 
-    return json.loads(stdout.decode())
+    logger.debug(f"CLI completed in {elapsed:.1f}s (exit 0)")
+
+    try:
+        parsed = json.loads(stdout.decode())
+    except json.JSONDecodeError as e:
+        raw = stdout.decode()
+        raise RuntimeError(
+            f"CLI returned invalid JSON after {elapsed:.1f}s: {e}. "
+            f"Raw output: {raw[:500]}"
+        )
+
+    return parsed
 
 
 def load_system_prompt() -> str:
@@ -151,12 +172,14 @@ async def process_heartbeat(
         dict with response details (for debug mode)
     """
     logger.info(f"Processing heartbeat for user {user_id}" + (" (DEBUG MODE)" if debug else ""))
+    heartbeat_start = time.monotonic()
 
     result = {
         "tool_called": False,
         "message_sent": None,
         "reasoning": None,
-        "error": None
+        "error": None,
+        "debug_info": {}
     }
 
     # Load user's recent messages as context
@@ -197,6 +220,16 @@ async def process_heartbeat(
 
     prompt = f"[{current_time}] This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to the user or stay silent."
 
+    logger.debug(f"Heartbeat context for user {user_id}: "
+                 f"{len(recent_messages)} messages, {len(notes)} notes, "
+                 f"system prompt {len(full_system_prompt)} chars, "
+                 f"model={user_config.model}")
+
+    result["debug_info"]["message_count"] = len(recent_messages)
+    result["debug_info"]["note_count"] = len(notes)
+    result["debug_info"]["model"] = user_config.model
+    result["debug_info"]["system_prompt_length"] = len(full_system_prompt)
+
     # Call Claude CLI
     try:
         model = user_config.model
@@ -207,8 +240,8 @@ async def process_heartbeat(
             json_schema=HEARTBEAT_SCHEMA
         )
 
-        # Extract usage from CLI response
-        usage = cli_response.get("usage", {})
+        # Extract usage from CLI response (prefer modelUsage over usage)
+        usage = cli_response.get("modelUsage", cli_response.get("usage", {}))
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
 
@@ -229,21 +262,33 @@ async def process_heartbeat(
             user_id=user_id
         )
 
+        elapsed = time.monotonic() - heartbeat_start
         logger.info(f"API Usage (user {user_id}) - Input: {input_tokens}, "
                    f"Output: {output_tokens}, "
-                   f"Cost: ${usage_data['total_cost']:.6f}")
+                   f"Cost: ${usage_data['total_cost']:.6f}, "
+                   f"Time: {elapsed:.1f}s")
 
-        # Parse structured JSON decision from result
-        raw_result = cli_response.get("result", "")
+        result["debug_info"]["input_tokens"] = input_tokens
+        result["debug_info"]["output_tokens"] = output_tokens
+        result["debug_info"]["cost"] = usage_data['total_cost']
+        result["debug_info"]["elapsed_seconds"] = round(elapsed, 1)
+
+        # Parse structured JSON decision — CLI puts it in structured_output, not result
+        raw_result = cli_response.get("structured_output", cli_response.get("result", ""))
+        logger.info(f"Heartbeat output for user {user_id} (type={type(raw_result).__name__}): {str(raw_result)[:500]}")
+
         try:
             decision = json.loads(raw_result)
         except (json.JSONDecodeError, TypeError):
             # If result is already a dict (some CLI versions)
             decision = raw_result if isinstance(raw_result, dict) else {
                 "action": "stay_silent",
-                "reasoning": f"Failed to parse CLI output: {raw_result[:200]}"
+                "reasoning": f"Failed to parse CLI output: {str(raw_result)[:200]}"
             }
+            logger.warning(f"Failed to parse heartbeat decision as JSON for user {user_id}, "
+                          f"type={type(raw_result).__name__}")
 
+        logger.debug(f"Heartbeat decision for user {user_id}: action={decision.get('action')}")
         result["reasoning"] = decision.get("reasoning")
 
         if decision.get("action") == "send_message" and decision.get("message"):
@@ -329,8 +374,8 @@ async def respond_to_user(
             model=model
         )
 
-        # Extract usage
-        usage = cli_response.get("usage", {})
+        # Extract usage (prefer modelUsage over usage)
+        usage = cli_response.get("modelUsage", cli_response.get("usage", {}))
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
 
@@ -357,7 +402,10 @@ async def respond_to_user(
                    f"Cost: ${usage_data['total_cost']:.6f}")
 
         # Extract text response
-        response_text = cli_response.get("result", "")
+        response_text = cli_response.get("result", "") or ""
+
+        if not response_text:
+            logger.warning(f"Empty 'result' for user {user_id}, CLI keys: {list(cli_response.keys())}")
 
         if response_text:
             logger.info(f"Claude response to user {user_id}: {response_text[:50]}...")

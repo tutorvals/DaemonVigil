@@ -134,7 +134,7 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
     - status: Show heartbeat status
     - interval <minutes>: Change heartbeat interval
     """
-    from main import DaemonVigil
+    from .app_state import get_instance
 
     subcommand = args.strip().lower() if args else "test"
 
@@ -160,6 +160,19 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
         # Build debug response
         response = "Heartbeat Debug Report\n\n"
 
+        # Show debug info (timing, tokens, context)
+        debug_info = result.get("debug_info", {})
+        if debug_info:
+            response += f"Model: {debug_info.get('model', '?')}\n"
+            response += f"Context: {debug_info.get('message_count', '?')} messages, {debug_info.get('note_count', '?')} notes\n"
+            response += f"System prompt: {debug_info.get('system_prompt_length', '?')} chars\n"
+            if "input_tokens" in debug_info:
+                response += f"Tokens: {debug_info['input_tokens']} in / {debug_info['output_tokens']} out\n"
+                response += f"Cost: ${debug_info.get('cost', 0):.6f}\n"
+            if "elapsed_seconds" in debug_info:
+                response += f"Time: {debug_info['elapsed_seconds']}s\n"
+            response += "\n"
+
         if result["error"]:
             response += f"Error: {result['error']}"
         else:
@@ -182,7 +195,7 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
         await telegram_bot.send_message(response, chat_id=int(user_id))
 
     elif subcommand == "on":
-        app = DaemonVigil.get_instance()
+        app = get_instance()
         if app and app.scheduler:
             try:
                 app.scheduler.resume_user(user_id)
@@ -197,7 +210,7 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
         await telegram_bot.send_message(response, chat_id=int(user_id))
 
     elif subcommand == "off":
-        app = DaemonVigil.get_instance()
+        app = get_instance()
         if app and app.scheduler:
             try:
                 app.scheduler.pause_user(user_id)
@@ -212,7 +225,7 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
         await telegram_bot.send_message(response, chat_id=int(user_id))
 
     elif subcommand == "status":
-        app = DaemonVigil.get_instance()
+        app = get_instance()
         if app and app.scheduler:
             try:
                 status = app.scheduler.get_user_status(user_id)
@@ -252,7 +265,7 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
             user_storage.config.update_config(heartbeat_interval_minutes=minutes)
 
             # Update scheduler for this user
-            app = DaemonVigil.get_instance()
+            app = get_instance()
             if app and app.scheduler:
                 app.scheduler.remove_user(user_id)
                 app.scheduler.add_user(

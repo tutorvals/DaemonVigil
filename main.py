@@ -13,6 +13,7 @@ from src.scheduler import HeartbeatScheduler
 from src.storage import get_user_storage
 from src import claude
 from src import config
+from src.app_state import set_instance
 
 # Configure logging
 logging.basicConfig(
@@ -33,15 +34,12 @@ logger = logging.getLogger(__name__)
 class DaemonVigil:
     """Main application class."""
 
-    # Class variable to store instance for command access
-    _instance = None
-
     def __init__(self, silent: bool = False):
         self.telegram_bot = None
         self.scheduler = None
         self.shutdown_event = asyncio.Event()
         self.silent = silent
-        DaemonVigil._instance = self
+        set_instance(self)
 
     async def on_user_message(self, message: str, user_id: str):
         """
@@ -78,11 +76,6 @@ class DaemonVigil:
                 )
             except:
                 pass  # Best effort
-
-    @classmethod
-    def get_instance(cls):
-        """Get the current DaemonVigil instance."""
-        return cls._instance
 
     async def start(self):
         """Start all components."""

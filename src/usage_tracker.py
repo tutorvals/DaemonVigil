@@ -430,7 +430,7 @@ def format_usage_report(user_id: str) -> str:
     Returns:
         Formatted string with usage statistics for that user
     """
-    from main import DaemonVigil
+    from .app_state import get_instance
 
     # Get user-specific storage and config
     user_storage = get_user_storage(user_id)
@@ -440,7 +440,7 @@ def format_usage_report(user_id: str) -> str:
     report += f"Model: {user_config.model}\n\n"
 
     # Heartbeat status (user-specific)
-    app = DaemonVigil.get_instance()
+    app = get_instance()
     if app and app.scheduler:
         try:
             status = app.scheduler.get_user_status(user_id)
