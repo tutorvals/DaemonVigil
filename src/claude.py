@@ -1,15 +1,35 @@
-"""Claude API integration."""
+"""Claude integration via CLI subprocess."""
+import asyncio
+import json
 import logging
-from pathlib import Path
+import os
 from datetime import datetime
-from anthropic import Anthropic
 
 from . import config
-from . import storage
 from .storage import UserStorageManager, UserConfig
 from . import usage_tracker
 
 logger = logging.getLogger(__name__)
+
+# JSON schema for heartbeat structured output
+HEARTBEAT_SCHEMA = json.dumps({
+    "type": "object",
+    "properties": {
+        "action": {
+            "type": "string",
+            "enum": ["send_message", "stay_silent"]
+        },
+        "message": {
+            "type": "string",
+            "description": "Message to send if action is send_message"
+        },
+        "reasoning": {
+            "type": "string",
+            "description": "Brief reasoning for the decision"
+        }
+    },
+    "required": ["action", "reasoning"]
+})
 
 
 def format_timestamp(iso_timestamp: str) -> str:
@@ -33,26 +53,68 @@ def get_current_time_str() -> str:
     """Get current time as formatted string."""
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
-# Initialize Anthropic client
-client = Anthropic(api_key=config.ANTHROPIC_API_KEY)
 
-# Tool definition for Claude
-TOOLS = [
-    {
-        "name": "send_message",
-        "description": "Send a message to the user via Telegram. Use this to check in, ask how he's doing, offer help, or gently prompt. You may also choose NOT to call this tool if silence is more appropriate (e.g., user just said they're going for a run).",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "description": "The message to send"
-                }
-            },
-            "required": ["message"]
-        }
-    }
-]
+async def _run_claude_cli(
+    prompt: str,
+    system_prompt: str,
+    model: str,
+    json_schema: str = None,
+    timeout: int = 120
+) -> dict:
+    """
+    Run claude CLI non-interactively and return parsed JSON output.
+
+    Args:
+        prompt: The user prompt to send
+        system_prompt: System prompt text
+        model: Model name or alias
+        json_schema: Optional JSON schema for structured output
+        timeout: Timeout in seconds
+
+    Returns:
+        dict with keys: result, usage, model, session_id
+
+    Raises:
+        RuntimeError: On CLI failure or timeout
+    """
+    cmd = [
+        'claude', '-p', prompt,
+        '--output-format', 'json',
+        '--no-session-persistence',
+        '--system-prompt', system_prompt,
+    ]
+
+    if json_schema:
+        cmd.extend(['--json-schema', json_schema])
+
+    # Allow running even if launched from within a claude session
+    env = os.environ.copy()
+    env.pop('CLAUDE_CODE', None)
+    env.pop('CLAUDECODE', None)
+    env.pop('ANTHROPIC_API_KEY', None)
+
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env=env
+    )
+
+    try:
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(), timeout=timeout
+        )
+    except asyncio.TimeoutError:
+        proc.kill()
+        raise RuntimeError(f"Claude CLI timed out after {timeout}s")
+
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"Claude CLI failed (exit {proc.returncode}): "
+            f"stderr={stderr.decode()} stdout={stdout.decode()[:500]}"
+        )
+
+    return json.loads(stdout.decode())
 
 
 def load_system_prompt() -> str:
@@ -61,7 +123,6 @@ def load_system_prompt() -> str:
     if prompt_file.exists():
         return prompt_file.read_text()
     else:
-        # Fallback basic prompt if file doesn't exist yet
         return """You are Daemon Vigil, a proactive AI companion for Vals.
 
 You run on a heartbeat, periodically checking in. You have access to conversation history and can choose whether to send a message or stay silent.
@@ -130,34 +191,32 @@ async def process_heartbeat(
 
     context = "\n".join(context_parts)
 
-    # Build messages for Claude
+    # Build prompts
     system_prompt = load_system_prompt()
     full_system_prompt = f"{system_prompt}\n\n{context}"
 
-    messages = [
-        {
-            "role": "user",
-            "content": f"[{current_time}] This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to the user or stay silent."
-        }
-    ]
+    prompt = f"[{current_time}] This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to the user or stay silent."
 
-    # Call Claude API
+    # Call Claude CLI
     try:
-        # Use user's preferred model
         model = user_config.model
-        response = client.messages.create(
+        cli_response = await _run_claude_cli(
+            prompt=prompt,
+            system_prompt=full_system_prompt,
             model=model,
-            max_tokens=1024,
-            system=full_system_prompt,
-            messages=messages,
-            tools=TOOLS
+            json_schema=HEARTBEAT_SCHEMA
         )
 
-        # Track usage and cost with user_id
+        # Extract usage from CLI response
+        usage = cli_response.get("usage", {})
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+
+        # Track usage and cost
         usage_data = usage_tracker.calculate_cost(
             model=model,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens
+            input_tokens=input_tokens,
+            output_tokens=output_tokens
         )
         usage_data["request_type"] = "heartbeat"
         usage_data["user_id"] = user_id
@@ -170,36 +229,39 @@ async def process_heartbeat(
             user_id=user_id
         )
 
-        logger.info(f"API Usage (user {user_id}) - Input: {response.usage.input_tokens}, "
-                   f"Output: {response.usage.output_tokens}, "
+        logger.info(f"API Usage (user {user_id}) - Input: {input_tokens}, "
+                   f"Output: {output_tokens}, "
                    f"Cost: ${usage_data['total_cost']:.6f}")
 
-        # Process response
-        for block in response.content:
-            if block.type == "tool_use" and block.name == "send_message":
-                message = block.input["message"]
-                logger.info(f"Claude decided to send message to user {user_id}: {message[:50]}...")
+        # Parse structured JSON decision from result
+        raw_result = cli_response.get("result", "")
+        try:
+            decision = json.loads(raw_result)
+        except (json.JSONDecodeError, TypeError):
+            # If result is already a dict (some CLI versions)
+            decision = raw_result if isinstance(raw_result, dict) else {
+                "action": "stay_silent",
+                "reasoning": f"Failed to parse CLI output: {raw_result[:200]}"
+            }
 
-                result["tool_called"] = True
-                result["message_sent"] = message
+        result["reasoning"] = decision.get("reasoning")
 
-                # Send via Telegram to specific user (unless debug mode)
-                if not debug:
-                    await telegram_bot.send_message(message, chat_id=int(user_id))
-                    # Log as assistant message in user's storage
-                    user_storage.messages.add_message("assistant", message)
+        if decision.get("action") == "send_message" and decision.get("message"):
+            message = decision["message"]
+            logger.info(f"Claude decided to send message to user {user_id}: {message[:50]}...")
 
-            elif block.type == "text":
-                # Claude's internal reasoning
-                result["reasoning"] = block.text
-                logger.debug(f"Claude reasoning: {block.text}")
+            result["tool_called"] = True
+            result["message_sent"] = message
 
-        # If no tool was called, Claude chose silence
-        if not any(block.type == "tool_use" for block in response.content):
+            # Send via Telegram to specific user (unless debug mode)
+            if not debug:
+                await telegram_bot.send_message(message, chat_id=int(user_id))
+                user_storage.messages.add_message("assistant", message)
+        else:
             logger.info("Claude chose not to send a message this cycle")
 
     except Exception as e:
-        logger.error(f"Error in Claude API call: {e}", exc_info=True)
+        logger.error(f"Error in Claude CLI call: {e}", exc_info=True)
         result["error"] = str(e)
 
     return result
@@ -227,22 +289,17 @@ async def respond_to_user(
     # Load user's recent messages
     recent_messages = user_storage.messages.get_recent_messages(user_config.max_context_messages)
 
-    # Build conversation for Claude with timestamps in content
-    messages = []
+    # Flatten conversation history into the prompt
+    conversation_lines = []
     for msg in recent_messages:
         timestamp = format_timestamp(msg["timestamp"])
-        # Prepend timestamp to message content
-        content_with_time = f"[{timestamp}] {msg['content']}"
-        messages.append({
-            "role": msg["role"],
-            "content": content_with_time
-        })
+        conversation_lines.append(f"[{timestamp}] {msg['role']}: {msg['content']}")
+    conversation_text = "\n".join(conversation_lines)
 
-    # Load system prompt with user's scratchpad context and current time
+    # Build system prompt with scratchpad context and current time
     notes = user_storage.scratchpad.get_notes()
     context_parts = []
 
-    # Add current time
     current_time = get_current_time_str()
     context_parts.append(f"## Current Time: {current_time}")
     context_parts.append("")
@@ -260,22 +317,28 @@ async def respond_to_user(
     else:
         full_system_prompt = system_prompt
 
-    # Call Claude API
+    # Build prompt with conversation history
+    prompt = f"Here is the recent conversation:\n{conversation_text}\n\nRespond to the user's latest message."
+
+    # Call Claude CLI
     try:
-        # Use user's preferred model
         model = user_config.model
-        response = client.messages.create(
-            model=model,
-            max_tokens=2048,
-            system=full_system_prompt,
-            messages=messages
+        cli_response = await _run_claude_cli(
+            prompt=prompt,
+            system_prompt=full_system_prompt,
+            model=model
         )
 
-        # Track usage and cost with user_id
+        # Extract usage
+        usage = cli_response.get("usage", {})
+        input_tokens = usage.get("input_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0)
+
+        # Track usage and cost
         usage_data = usage_tracker.calculate_cost(
             model=model,
-            input_tokens=response.usage.input_tokens,
-            output_tokens=response.usage.output_tokens
+            input_tokens=input_tokens,
+            output_tokens=output_tokens
         )
         usage_data["request_type"] = "user_response"
         usage_data["user_id"] = user_id
@@ -289,27 +352,20 @@ async def respond_to_user(
             user_id=user_id
         )
 
-        logger.info(f"API Usage (user {user_id}) - Input: {response.usage.input_tokens}, "
-                   f"Output: {response.usage.output_tokens}, "
+        logger.info(f"API Usage (user {user_id}) - Input: {input_tokens}, "
+                   f"Output: {output_tokens}, "
                    f"Cost: ${usage_data['total_cost']:.6f}")
 
         # Extract text response
-        response_text = ""
-        for block in response.content:
-            if block.type == "text":
-                response_text += block.text
+        response_text = cli_response.get("result", "")
 
         if response_text:
             logger.info(f"Claude response to user {user_id}: {response_text[:50]}...")
-
-            # Send via Telegram to specific user
             await telegram_bot.send_message(response_text, chat_id=int(user_id))
-
-            # Log as assistant message in user's storage
             user_storage.messages.add_message("assistant", response_text)
         else:
             logger.warning(f"Claude returned empty response for user {user_id}")
 
     except Exception as e:
-        logger.error(f"Error in Claude API call for user {user_id}: {e}", exc_info=True)
+        logger.error(f"Error in Claude CLI call for user {user_id}: {e}", exc_info=True)
         raise

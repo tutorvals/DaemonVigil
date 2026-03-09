@@ -380,6 +380,46 @@ def get_all_users_usage_stats(days: int) -> List[Dict]:
     return result
 
 
+def get_user_calls_in_window(user_id: str, hours: int = 5) -> int:
+    """
+    Count CLI calls for a user in the last N hours.
+
+    Args:
+        user_id: User ID to filter by
+        hours: Window size in hours (default 5 for Pro plan)
+
+    Returns:
+        Number of calls in the window
+    """
+    if not USAGE_FILE.exists():
+        return 0
+
+    from datetime import timezone
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    count = 0
+
+    with open(USAGE_FILE, 'r') as f:
+        for line in f:
+            try:
+                entry = json.loads(line)
+                if entry.get("user_id") != user_id:
+                    continue
+                entry_time = datetime.fromisoformat(entry["timestamp"].replace('Z', '+00:00'))
+                if entry_time >= cutoff:
+                    count += 1
+            except (json.JSONDecodeError, KeyError, ValueError):
+                continue
+
+    return count
+
+
+# Approximate message limits per 5-hour window by plan
+PLAN_LIMITS = {
+    "pro": 45,
+    "max": 225,
+}
+
+
 def format_usage_report(user_id: str) -> str:
     """
     Format a usage report for a specific user.
@@ -395,11 +435,6 @@ def format_usage_report(user_id: str) -> str:
     # Get user-specific storage and config
     user_storage = get_user_storage(user_id)
     user_config = user_storage.config.get_config()
-
-    # Get user-specific usage stats
-    today_stats = get_user_usage_stats(user_id, 1)
-    week_stats = get_user_usage_stats(user_id, 7)
-    month_stats = get_user_usage_stats(user_id, 30)
 
     report = "Status Report\n\n"
     report += f"Model: {user_config.model}\n\n"
@@ -434,17 +469,23 @@ def format_usage_report(user_id: str) -> str:
             note_preview = note_preview[:77] + "..."
         report += f"Last note: {note_preview}\n"
 
-    report += "\nAPI Costs (Your Usage):\n"
+    # Subscription usage (calls in 5-hour window)
+    calls_5h = get_user_calls_in_window(user_id, hours=5)
+    plan_limit = PLAN_LIMITS.get("pro", 45)
+    usage_pct = min(100.0, (calls_5h / plan_limit) * 100)
 
-    if today_stats["request_count"] == 0:
-        report += "No API usage recorded yet\n"
-    else:
-        report += f"Today:      ${today_stats['total_cost']:.4f} ({today_stats['request_count']} requests)\n"
-        report += f"This Week:  ${week_stats['total_cost']:.4f} ({week_stats['request_count']} requests)\n"
-        report += f"This Month: ${month_stats['total_cost']:.4f} ({month_stats['request_count']} requests)\n"
+    report += f"\nSubscription Usage (5h window):\n"
+    report += f"Messages: {calls_5h}/{plan_limit} ({usage_pct:.0f}%)\n"
 
-        report += "\nUsage Today:\n"
-        report += f"Total tokens: {today_stats['total_tokens']:,} "
-        report += f"({today_stats['input_tokens']:,} in, {today_stats['output_tokens']:,} out)"
+    # Simple visual bar
+    filled = round(usage_pct / 5)
+    bar = "█" * filled + "░" * (20 - filled)
+    report += f"[{bar}]\n"
+
+    # Also show today's total
+    today_stats = get_user_usage_stats(user_id, 1)
+    if today_stats["request_count"] > 0:
+        report += f"\nToday: {today_stats['request_count']} requests, "
+        report += f"{today_stats['total_tokens']:,} tokens"
 
     return report

@@ -104,9 +104,9 @@ class MultiUserHeartbeatScheduler:
             f"(interval: {interval_minutes}m, enabled: {enabled})"
         )
 
-        # Log next run time
+        # Log next run time (may not be set if scheduler hasn't started yet)
         job = self.scheduler.get_job(job_id)
-        if job and job.next_run_time:
+        if job and getattr(job, 'next_run_time', None):
             logger.info(f"Next heartbeat for user {user_id}: {job.next_run_time}")
 
     def remove_user(self, user_id: str):
@@ -143,7 +143,7 @@ class MultiUserHeartbeatScheduler:
 
         return {
             "enabled": self.is_enabled(user_id),
-            "next_run": job.next_run_time if job else None,
+            "next_run": getattr(job, 'next_run_time', None) if job else None,
             "interval_minutes": config.get_heartbeat_interval(),
             "job_exists": job is not None
         }
@@ -176,7 +176,8 @@ class MultiUserHeartbeatScheduler:
     def stop(self):
         """Stop the scheduler."""
         logger.info("Stopping multi-user scheduler...")
-        self.scheduler.shutdown()
+        if self.scheduler.running:
+            self.scheduler.shutdown()
         logger.info("Multi-user scheduler stopped")
 
 

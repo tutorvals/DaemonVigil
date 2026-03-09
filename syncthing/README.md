@@ -4,11 +4,11 @@ Two-way sync of the `data/` directory between VPS and local PC.
 
 ## What gets synced
 
-Only `data/` (~44K, 4 files):
+Only `data/` directory:
 - `api_usage.jsonl` — usage log
-- `messages.json` — conversation history
 - `billing_thresholds.json` — threshold state
-- `scratchpad.json` — notes
+- `users.json` — user registry
+- `users/<user_id>/` — per-user messages, scratchpad, config
 
 **Not synced:** `.env` (secrets, stays manual per machine), `config.yaml` (git-tracked).
 
