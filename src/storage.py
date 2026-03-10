@@ -124,7 +124,7 @@ class User:
 class UserConfig:
     """User configuration data model."""
     user_id: str
-    model: str = "claude-opus-4-5-20251101"
+    model: str = "opus"
     heartbeat_enabled: bool = True
     heartbeat_interval_minutes: int = 15
     max_context_messages: int = 50
@@ -304,11 +304,3 @@ def get_user_registry() -> UserRegistry:
     if _user_registry is None:
         _user_registry = UserRegistry(config.DATA_DIR / "users.json")
     return _user_registry
-
-
-# ============================================================================
-# Legacy Global Storage Instances (deprecated, kept for backwards compatibility)
-# ============================================================================
-# These will be removed after migration is complete
-messages = MessageStorage(config.MESSAGES_FILE)
-scratchpad = ScratchpadStorage(config.SCRATCHPAD_FILE)

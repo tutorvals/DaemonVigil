@@ -13,10 +13,15 @@ logger = logging.getLogger(__name__)
 
 # Pricing per million tokens (as of Dec 2025)
 PRICING = {
+    "sonnet": {"input": 3.00, "output": 15.00},
     "claude-sonnet-4-20250514": {"input": 3.00, "output": 15.00},
+    "sonnet-4.5": {"input": 3.00, "output": 15.00},
     "claude-sonnet-4-5-20250929": {"input": 3.00, "output": 15.00},
+    "opus": {"input": 15.00, "output": 75.00},
     "claude-opus-4-5-20251101": {"input": 15.00, "output": 75.00},
+    "haiku": {"input": 0.80, "output": 4.00},
     "claude-3-5-haiku-20241022": {"input": 0.80, "output": 4.00},
+    "haiku-3": {"input": 0.25, "output": 1.25},
     "claude-3-haiku-20240307": {"input": 0.25, "output": 1.25},
 }
 

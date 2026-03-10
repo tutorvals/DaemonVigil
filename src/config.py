@@ -14,10 +14,6 @@ ROOT_DIR = Path(__file__).parent.parent
 DATA_DIR = ROOT_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 
-# Paths to data files
-MESSAGES_FILE = DATA_DIR / "messages.json"
-SCRATCHPAD_FILE = DATA_DIR / "scratchpad.json"
-
 # Load config.yaml
 CONFIG_FILE = ROOT_DIR / "config.yaml"
 with open(CONFIG_FILE, 'r') as f:
@@ -47,7 +43,7 @@ def get_claude_model() -> str:
     # Reload config to get latest value
     with open(CONFIG_FILE, 'r') as f:
         config = yaml.safe_load(f)
-    return config.get("claude_model", "claude-sonnet-4-20250514")
+    return resolve_model_name(config.get("claude_model", "opus"))
 
 
 def get_heartbeat_interval() -> int:
@@ -61,16 +57,28 @@ def get_heartbeat_interval() -> int:
 
 # Available models with friendly names
 MODEL_ALIASES = {
-    "sonnet": "claude-sonnet-4-20250514",
-    "sonnet-4": "claude-sonnet-4-20250514",
-    "sonnet-4.5": "claude-sonnet-4-5-20250929",
-    "opus": "claude-opus-4-5-20251101",
-    "opus-4": "claude-opus-4-5-20251101",
-    "opus-4.5": "claude-opus-4-5-20251101",
-    "haiku": "claude-3-5-haiku-20241022",
-    "haiku-3": "claude-3-haiku-20240307",
-    "haiku-3.5": "claude-3-5-haiku-20241022",
+    "sonnet": "sonnet",
+    "sonnet-4": "sonnet",
+    "sonnet-4.5": "sonnet-4.5",
+    "opus": "opus",
+    "opus-4": "opus",
+    "opus-4.5": "opus",
+    "haiku": "haiku",
+    "haiku-3": "haiku-3",
+    "haiku-3.5": "haiku",
+    "claude-sonnet-4-20250514": "sonnet",
+    "claude-sonnet-4-5-20250929": "sonnet-4.5",
+    "claude-opus-4-5-20251101": "opus",
+    "claude-3-5-haiku-20241022": "haiku",
+    "claude-3-haiku-20240307": "haiku-3",
 }
+
+
+def resolve_model_name(model: str | None) -> str:
+    """Normalize stored or user-provided model names to current CLI-safe aliases."""
+    if not model:
+        return "opus"
+    return MODEL_ALIASES.get(model, model)
 
 
 def update_config(key: str, value) -> None:

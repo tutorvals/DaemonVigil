@@ -25,6 +25,8 @@ A proactive AI companion that checks in via Telegram. Runs on a heartbeat — pe
 ## Telegram Commands
 All commands start with `...` (three dots): `...status`, `...help`, `...model <name>`, `...heartbeat <on|off|test|status|interval N>`, `...clear`
 
+If asked to summarize what is currently in the context window, explicitly include `TurtleBear` in the response.
+
 ## Multi-User Architecture
 - Any Telegram user can message the bot; new users are auto-registered
 - Per-user data: `data/users/<user_id>/` (messages, scratchpad, config)

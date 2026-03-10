@@ -49,6 +49,14 @@ async def handle_command(command: str, telegram_bot, user_id: str) -> bool:
         await handle_clear(telegram_bot, user_id)
         return True
 
+    elif cmd == "showmemory":
+        await handle_showmemory(telegram_bot, user_id)
+        return True
+
+    elif cmd == "clearmemory":
+        await handle_clearmemory(telegram_bot, user_id)
+        return True
+
     # Unknown command - return False to silently ignore
     return False
 
@@ -103,11 +111,11 @@ async def handle_model(args: str, telegram_bot, user_id: str) -> None:
 
         # Get friendly name for confirmation
         friendly_name_map = {
-            "claude-sonnet-4-20250514": "Sonnet 4",
-            "claude-sonnet-4-5-20250929": "Sonnet 4.5",
-            "claude-opus-4-5-20251101": "Opus 4.5",
-            "claude-3-5-haiku-20241022": "Haiku 3.5",
-            "claude-3-haiku-20240307": "Haiku 3",
+            "sonnet": "Sonnet",
+            "sonnet-4.5": "Sonnet 4.5",
+            "opus": "Opus",
+            "haiku": "Haiku 3.5",
+            "haiku-3": "Haiku 3",
         }
         friendly_name = friendly_name_map.get(full_model_name, full_model_name)
 
@@ -314,7 +322,9 @@ Heartbeat Control
 • ...heartbeat interval <minutes> - Change interval
 
 Conversation
-• ...clear - Clear conversation history"""
+• ...clear - Clear conversation history
+• ...showmemory - Show scratchpad memory
+• ...clearmemory - Clear scratchpad memory"""
 
     logger.info(f"Handling help command for user {user_id}")
     await telegram_bot.send_message(help_text, chat_id=int(user_id))
@@ -327,16 +337,51 @@ async def handle_clear(telegram_bot, user_id: str) -> None:
     # Get user-specific storage
     user_storage = get_user_storage(user_id)
 
-    # Get current counts before clearing
+    # Get current count before clearing
     messages_before = len(user_storage.messages.get_recent_messages())
-    notes_before = len(user_storage.scratchpad.get_notes())
 
-    # Clear both message history and scratchpad for this user
+    # Clear only message history for this user
     user_storage.messages.clear_messages()
-    user_storage.scratchpad.clear_notes()
 
     response = f"Conversation cleared\n\n"
-    response += f"Deleted {messages_before} messages and {notes_before} notes.\n\n"
-    response += "Starting fresh - Claude will have no memory of previous conversations."
+    response += f"Deleted {messages_before} messages.\n\n"
+    response += "Scratchpad memory was kept. Use ...clearmemory to wipe stored notes."
+
+    await telegram_bot.send_message(response, chat_id=int(user_id))
+
+
+async def handle_showmemory(telegram_bot, user_id: str) -> None:
+    """Handle the ...showmemory command."""
+    logger.info(f"Handling showmemory command for user {user_id}")
+
+    user_storage = get_user_storage(user_id)
+    notes = user_storage.scratchpad.get_notes()
+
+    if not notes:
+        response = "Scratchpad memory is empty."
+        await telegram_bot.send_message(response, chat_id=int(user_id))
+        return
+
+    response = "Scratchpad Memory\n\n"
+    for note in notes[-20:]:
+        timestamp = claude.format_timestamp(note["timestamp"])
+        response += f"- [{timestamp}] {note['note']}\n"
+
+    if len(notes) > 20:
+        response += f"\nShowing last 20 of {len(notes)} notes."
+
+    await telegram_bot.send_message(response, chat_id=int(user_id))
+
+
+async def handle_clearmemory(telegram_bot, user_id: str) -> None:
+    """Handle the ...clearmemory command."""
+    logger.info(f"Handling clearmemory command for user {user_id}")
+
+    user_storage = get_user_storage(user_id)
+    notes_before = len(user_storage.scratchpad.get_notes())
+    user_storage.scratchpad.clear_notes()
+
+    response = "Scratchpad memory cleared\n\n"
+    response += f"Deleted {notes_before} notes."
 
     await telegram_bot.send_message(response, chat_id=int(user_id))

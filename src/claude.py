@@ -1,4 +1,4 @@
-"""Claude integration via the Anthropic Agent SDK."""
+"""Claude integration via the Claude Agent SDK using Claude Code auth."""
 import asyncio
 import json
 import logging
@@ -90,15 +90,8 @@ def _normalize_usage(usage) -> dict:
     }
 
 
-def _sdk_stderr_logger(line: str) -> None:
-    """Route Claude Agent SDK stderr into the app log."""
-    text = line.rstrip()
-    if text:
-        logger.error("Claude SDK stderr: %s", text)
-
-
 def _build_sdk_env() -> dict[str, str]:
-    """Build SDK environment while stripping API-key auth to prefer Claude Code auth."""
+    """Build SDK environment for a minimal stateless Claude Code-backed request."""
     env = os.environ.copy()
     env.pop("ANTHROPIC_API_KEY", None)
     env.pop("ANTHROPIC_AUTH_TOKEN", None)
@@ -106,59 +99,8 @@ def _build_sdk_env() -> dict[str, str]:
     env.pop("CLAUDECODE", None)
     env.pop("CLAUDE_CODE_ENTRYPOINT", None)
     env.pop("CLAUDE_TTY", None)
+    env["CLAUDE_CODE_DISABLE_AUTO_MEMORY"] = "1"
     return env
-
-
-def _summarize_sdk_env(env: dict[str, str]) -> dict:
-    """Return a safe summary of Claude-relevant environment variables."""
-    keys_to_log = [
-        "HOME",
-        "PATH",
-        "SHELL",
-        "USER",
-        "PWD",
-        "XDG_CONFIG_HOME",
-        "XDG_CACHE_HOME",
-        "XDG_STATE_HOME",
-        "CLAUDE_CONFIG_DIR",
-        "CLAUDE_CODE_USE_BEDROCK",
-        "CLAUDE_CODE_USE_VERTEX",
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "NO_PROXY",
-    ]
-    summary = {key: env.get(key) for key in keys_to_log}
-
-    for key in sorted(env):
-        if key.startswith(("CLAUDE", "ANTHROPIC")):
-            summary[f"{key}_present"] = bool(env.get(key))
-
-    return summary
-
-
-def _summarize_sdk_message(message) -> dict:
-    """Build a loggable summary of an SDK message."""
-    summary = {
-        "type": getattr(message, "type", None),
-        "class": message.__class__.__name__,
-    }
-
-    for attr in ("subtype", "session_id", "is_error", "result"):
-        if hasattr(message, attr):
-            value = getattr(message, attr)
-            if isinstance(value, str):
-                summary[attr] = value[:500]
-            else:
-                summary[attr] = value
-
-    if hasattr(message, "usage"):
-        summary["usage"] = _normalize_usage(getattr(message, "usage", None))
-
-    text = _extract_text_from_sdk_message(message)
-    if text:
-        summary["text_preview"] = text[:500]
-
-    return summary
 
 
 async def _collect_sdk_response(prompt: str, options: ClaudeAgentOptions) -> dict:
@@ -167,14 +109,14 @@ async def _collect_sdk_response(prompt: str, options: ClaudeAgentOptions) -> dic
     result_message = None
 
     async for message in query(prompt=prompt, options=options):
-        logger.info("Claude SDK message: %s", _summarize_sdk_message(message))
         message_type = getattr(message, "type", None)
+        message_class = message.__class__.__name__
 
-        if message_type == "assistant":
+        if message_type == "assistant" or message_class == "AssistantMessage":
             text = _extract_text_from_sdk_message(message)
             if text:
                 assistant_parts.append(text)
-        elif message_type == "result":
+        elif message_type == "result" or message_class == "ResultMessage":
             result_message = message
 
     if result_message is None:
@@ -242,10 +184,12 @@ async def _run_claude_sdk(
         cwd=str(config.ROOT_DIR),
         cli_path=str(CLAUDE_CLI_PATH),
         env=sdk_env,
-        permission_mode="bypassPermissions",
+        # Keep the SDK call as close as possible to a plain API-style request.
+        tools=[],
+        setting_sources=[],
         max_turns=1,
         extra_args={"no-session-persistence": None},
-        stderr=_sdk_stderr_logger,
+        thinking={"type": "disabled"},
     )
 
     logger.debug(
@@ -254,20 +198,6 @@ async def _run_claude_sdk(
         len(prompt),
         len(system_prompt),
     )
-    logger.info(
-        "Agent SDK options: %s",
-        {
-            "model": model,
-            "cwd": str(config.ROOT_DIR),
-            "cli_path": str(CLAUDE_CLI_PATH),
-            "permission_mode": "bypassPermissions",
-            "max_turns": 1,
-            "extra_args": {"no-session-persistence": None},
-            "has_output_format": output_format is not None,
-            "env": _summarize_sdk_env(sdk_env),
-        },
-    )
-
     start_time = time.monotonic()
     try:
         response = await asyncio.wait_for(
@@ -380,7 +310,7 @@ async def process_heartbeat(
 
     # Call Claude Agent SDK
     try:
-        model = user_config.model
+        model = config.resolve_model_name(user_config.model)
         sdk_response = await _run_claude_sdk(
             prompt=prompt,
             system_prompt=full_system_prompt,
@@ -514,7 +444,7 @@ async def respond_to_user(
 
     # Call Claude Agent SDK
     try:
-        model = user_config.model
+        model = config.resolve_model_name(user_config.model)
         sdk_response = await _run_claude_sdk(
             prompt=prompt,
             system_prompt=full_system_prompt,

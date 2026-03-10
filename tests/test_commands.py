@@ -1,9 +1,14 @@
 """Unit tests for command dispatch and handlers."""
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 
-from src.commands import handle_command, handle_help, handle_clear
-from src.storage import UserStorageManager
+from src.commands import (
+    handle_clearmemory,
+    handle_clear,
+    handle_command,
+    handle_help,
+    handle_showmemory,
+)
 
 
 @pytest.fixture
@@ -65,6 +70,20 @@ class TestCommandDispatch:
             mock_clear.assert_called_once_with(mock_bot, "123")
 
     @pytest.mark.asyncio
+    async def test_showmemory_dispatches(self, mock_bot, tmp_storage):
+        with patch("src.commands.handle_showmemory", new_callable=AsyncMock) as mock_showmemory:
+            result = await handle_command("showmemory", mock_bot, "123")
+            assert result is True
+            mock_showmemory.assert_called_once_with(mock_bot, "123")
+
+    @pytest.mark.asyncio
+    async def test_clearmemory_dispatches(self, mock_bot, tmp_storage):
+        with patch("src.commands.handle_clearmemory", new_callable=AsyncMock) as mock_clearmemory:
+            result = await handle_command("clearmemory", mock_bot, "123")
+            assert result is True
+            mock_clearmemory.assert_called_once_with(mock_bot, "123")
+
+    @pytest.mark.asyncio
     async def test_unknown_command(self, mock_bot, tmp_storage):
         result = await handle_command("nonexistent", mock_bot, "123")
         assert result is False
@@ -86,7 +105,7 @@ class TestHandleHelp:
 
 class TestHandleClear:
     @pytest.mark.asyncio
-    async def test_clears_user_storage(self, mock_bot, tmp_storage):
+    async def test_clears_only_messages(self, mock_bot, tmp_storage):
         from src.storage import get_user_storage
 
         # Add some data for this user
@@ -96,12 +115,54 @@ class TestHandleClear:
 
         await handle_clear(mock_bot, "789")
 
-        # Verify cleared
+        # Verify only messages cleared
         assert len(user_storage.messages.get_recent_messages()) == 0
-        assert len(user_storage.scratchpad.get_notes()) == 0
+        assert len(user_storage.scratchpad.get_notes()) == 1
 
         # Verify response sent
         mock_bot.send_message.assert_called_once()
         call_args = mock_bot.send_message.call_args
         assert "Conversation cleared" in call_args[0][0]
         assert call_args[1]["chat_id"] == 789
+
+
+class TestHandleShowMemory:
+    @pytest.mark.asyncio
+    async def test_shows_empty_memory(self, mock_bot, tmp_storage):
+        await handle_showmemory(mock_bot, "800")
+        call_args = mock_bot.send_message.call_args
+        assert "Scratchpad memory is empty." in call_args[0][0]
+        assert call_args[1]["chat_id"] == 800
+
+    @pytest.mark.asyncio
+    async def test_shows_notes(self, mock_bot, tmp_storage):
+        from src.storage import get_user_storage
+
+        user_storage = get_user_storage("801")
+        user_storage.scratchpad.add_note("remember this")
+
+        await handle_showmemory(mock_bot, "801")
+
+        call_args = mock_bot.send_message.call_args
+        assert "Scratchpad Memory" in call_args[0][0]
+        assert "remember this" in call_args[0][0]
+        assert call_args[1]["chat_id"] == 801
+
+
+class TestHandleClearMemory:
+    @pytest.mark.asyncio
+    async def test_clears_only_notes(self, mock_bot, tmp_storage):
+        from src.storage import get_user_storage
+
+        user_storage = get_user_storage("802")
+        user_storage.messages.add_message("user", "keep this conversation")
+        user_storage.scratchpad.add_note("delete this note")
+
+        await handle_clearmemory(mock_bot, "802")
+
+        assert len(user_storage.messages.get_recent_messages()) == 1
+        assert len(user_storage.scratchpad.get_notes()) == 0
+
+        call_args = mock_bot.send_message.call_args
+        assert "Scratchpad memory cleared" in call_args[0][0]
+        assert call_args[1]["chat_id"] == 802

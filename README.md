@@ -1,11 +1,12 @@
 # Daemon Vigil
-A proactive AI companion that checks in with you via Telegram. Unlike reactive chatbots, Daemon Vigil runs on a heartbeat - periodically waking up, assessing context, and **deciding** whether to send a message.
+A proactive AI companion that checks in via Telegram. Unlike a reactive chatbot, Daemon Vigil runs on a heartbeat, reviews recent context, and decides whether to send a message.
 
 ## Features
 - **Proactive Check-ins**: Claude decides whether to message or stay silent
 - **Heartbeat System**: Runs every 15 minutes (configurable)
 - **Time Awareness**: All messages timestamped, Claude can track time gaps
-- **Cost Tracking**: Monitor API usage and costs per day/week/month
+- **Usage Tracking**: Monitor token usage and estimated costs per day/week/month
+- **Per-User Storage**: Separate history, memory, and config per Telegram user
 - **Model Switching**: Easily switch between Sonnet, Opus, Haiku
 - **Command System**: Control bot behavior via Telegram commands
 
@@ -24,16 +25,16 @@ venv\Scripts\activate     # On Windows
 pip install -r requirements.txt
 
 ### 4. Configure Secrets
-Create a `.env` file with your API keys:
+Create a `.env` file with:
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-api03-...
 TELEGRAM_BOT_TOKEN=123456789:ABC...
 TELEGRAM_CHAT_ID=123456789
 ```
 
-**Getting API Keys:**
-- **Anthropic API Key**: Get from https://console.anthropic.com/
+Daemon Vigil uses local Claude Code authentication via the Python Agent SDK. It does not require an Anthropic API key for normal operation.
+
+**Getting Telegram credentials:**
 - **Telegram Bot Token**:
   1. Open Telegram and search for `@BotFather`
   2. Send `/newbot` and follow prompts
@@ -48,7 +49,7 @@ Edit `config.yaml` to customize:
 ```yaml
 heartbeat_interval_minutes: 15        # How often to check in
 max_context_messages: 50              # Conversation history size
-claude_model: claude-3-5-haiku-20241022  # Model to use
+claude_model: opus                    # Model alias to use
 ```
 
 ## Running
@@ -104,9 +105,9 @@ All commands start with `...` (three dots).
 
 **`...model <name>`** - Switch to a different model
 ```
-...model sonnet    # Sonnet 4 (balanced)
-...model opus      # Opus 4.5 (most powerful)
-...model haiku     # Haiku 3.5 (fastest/cheapest)
+...model sonnet    # balanced
+...model opus      # strongest
+...model haiku     # cheapest
 ```
 
 ### Heartbeat Control
@@ -129,8 +130,11 @@ All commands start with `...` (three dots).
 
 ### Conversation Management
 **`...clear`** - Clear conversation history
-- Deletes all messages and Claude's notes
-- Starts fresh with no memory of previous conversations
+- Keeps scratchpad memory intact
+
+**`...showmemory`** - Show scratchpad memory
+
+**`...clearmemory`** - Clear scratchpad memory
 
 ## Logs
 Logs are written to `daemon_vigil.log` in the project directory.
@@ -144,23 +148,34 @@ daemon-vigil/
 ├── daemon_vigil.log         # Log file (not in git)
 ├── requirements.txt         # Python dependencies
 ├── README.md                # This file
-├── DESIGN_COMMANDS.md       # Command system design
-├── DESIGN_SCHEDULER.md      # Scheduler design
 ├── data/                    # Data directory (not in git)
-│   ├── messages.json        # Conversation history
-│   ├── scratchpad.json      # Claude's notes
-│   └── api_usage.jsonl      # Usage tracking
+│   ├── api_usage.jsonl      # Usage tracking
+│   ├── users.json           # User registry
+│   └── users/<user_id>/     # Per-user data
 ├── src/                     # Source code
-│   ├── claude.py            # Claude API integration
+│   ├── claude.py            # Claude SDK integration
 │   ├── commands.py          # Command handlers
 │   ├── config.py            # Configuration loading
 │   ├── scheduler.py         # Heartbeat scheduler
-│   ├── storage.py           # JSON storage
+│   ├── storage.py           # Per-user JSON storage
 │   ├── telegram_bot.py      # Telegram integration
 │   └── usage_tracker.py     # Cost tracking
 └── prompts/
     └── system.md            # System prompt for Claude
 ```
+
+## Runtime Model
+- The app uses `claude_agent_sdk` with Claude Code auth from your local machine.
+- Calls are configured to be stateless and minimal:
+  - no persisted session
+  - no Claude Code tools
+  - no CLAUDE.md/project settings injection
+  - Claude Code auto-memory disabled
+- The context sent to Claude is built by the app from:
+  - `prompts/system.md`
+  - current time
+  - recent conversation history
+  - per-user scratchpad notes
 
 ## Contributing
 This is a personal project, feel free to fork and adapt for your own use.
