@@ -10,8 +10,13 @@ if [ -f "venv/bin/activate" ]; then
     source venv/bin/activate
 fi
 
+PYTHON_BIN="python"
+if [ -x "venv/bin/python" ]; then
+    PYTHON_BIN="$SCRIPT_DIR/venv/bin/python"
+fi
+
 echo "Starting Daemon Vigil..."
-nohup python main.py --silent > daemon_vigil.log 2>&1 &
+nohup "$PYTHON_BIN" main.py --silent > daemon_vigil.log 2>&1 &
 PID=$!
 echo "$PID" > .daemon_vigil.pid
 echo "Daemon Vigil started (PID: $PID)"
