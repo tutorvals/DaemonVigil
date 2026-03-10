@@ -225,20 +225,3 @@ Run tests with the project virtualenv:
 ```bash
 ./venv/bin/pytest -q
 ```
-
-## README Gaps That Were Fixed
-
-The previous README was usable as a rough overview, but it had several accuracy gaps:
-
-- It described the app mostly as single-user even though the code is multi-user.
-- It did not document quiet-hours commands.
-- It implied `TELEGRAM_CHAT_ID` was always required, while the code treats it as optional.
-- It did not clearly state that local Claude Code authentication is a real runtime prerequisite.
-- It documented `tmux`, but the repo already ships `start.sh` and `stop.sh` as the simpler default path.
-
-## Next Documentation Improvements
-
-- Add a dedicated troubleshooting section for Telegram auth, Claude auth, and empty replies.
-- Add an example `.env.example`.
-- Document the expected Python version explicitly in the project metadata.
-- Document deployment steps separately from local quickstart.
