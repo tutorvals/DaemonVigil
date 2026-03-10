@@ -133,6 +133,7 @@ async def _collect_sdk_response(prompt: str, options: ClaudeAgentOptions) -> dic
 
     return {
         "result": result_text,
+        "assistant_text": "\n".join(assistant_parts).strip(),
         "structured_output": getattr(result_message, "structured_output", None),
         "session_id": getattr(result_message, "session_id", None),
         "usage": usage,
@@ -214,6 +215,51 @@ async def _run_claude_sdk(
     elapsed = time.monotonic() - start_time
     logger.debug("Agent SDK query completed in %.1fs", elapsed)
     return response
+
+
+def _parse_heartbeat_decision(sdk_response: dict) -> dict:
+    """Normalize the heartbeat decision from SDK output into a dict."""
+    raw_structured = sdk_response.get("structured_output")
+    if isinstance(raw_structured, dict):
+        return raw_structured
+
+    raw_candidates = [
+        raw_structured,
+        sdk_response.get("result"),
+        sdk_response.get("assistant_text"),
+    ]
+
+    for raw_candidate in raw_candidates:
+        if not isinstance(raw_candidate, str):
+            continue
+
+        candidate = raw_candidate.strip()
+        if not candidate:
+            continue
+
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+
+        if isinstance(parsed, dict):
+            return parsed
+
+    details = []
+    if raw_structured is not None:
+        details.append(f"structured_output={type(raw_structured).__name__}")
+    if sdk_response.get("result") is not None:
+        details.append(f"result={type(sdk_response.get('result')).__name__}:{len(str(sdk_response.get('result')))}")
+    if sdk_response.get("assistant_text") is not None:
+        details.append(
+            f"assistant_text={type(sdk_response.get('assistant_text')).__name__}:{len(str(sdk_response.get('assistant_text')))}"
+        )
+
+    detail_text = ", ".join(details) if details else "no SDK output fields were populated"
+    return {
+        "action": "stay_silent",
+        "reasoning": f"Claude returned no parseable heartbeat decision ({detail_text})"
+    }
 
 
 def load_system_prompt() -> str:
@@ -354,18 +400,18 @@ async def process_heartbeat(
         raw_result = sdk_response.get("structured_output")
         if raw_result is None:
             raw_result = sdk_response.get("result", "")
-        logger.info(f"Heartbeat output for user {user_id} (type={type(raw_result).__name__}): {str(raw_result)[:500]}")
+        logger.info(
+            "Heartbeat output for user %s (structured=%s result_len=%s assistant_len=%s): %s",
+            user_id,
+            type(sdk_response.get("structured_output")).__name__,
+            len(sdk_response.get("result") or ""),
+            len(sdk_response.get("assistant_text") or ""),
+            str(raw_result)[:500],
+        )
 
-        try:
-            decision = json.loads(raw_result)
-        except (json.JSONDecodeError, TypeError):
-            # Structured output may already be deserialized by the SDK.
-            decision = raw_result if isinstance(raw_result, dict) else {
-                "action": "stay_silent",
-                "reasoning": f"Failed to parse SDK output: {str(raw_result)[:200]}"
-            }
-            logger.warning(f"Failed to parse heartbeat decision as JSON for user {user_id}, "
-                          f"type={type(raw_result).__name__}")
+        decision = _parse_heartbeat_decision(sdk_response)
+        if decision.get("reasoning", "").startswith("Claude returned no parseable heartbeat decision"):
+            logger.warning("Heartbeat decision missing/invalid for user %s: %s", user_id, decision["reasoning"])
 
         logger.debug(f"Heartbeat decision for user {user_id}: action={decision.get('action')}")
         result["reasoning"] = decision.get("reasoning")
