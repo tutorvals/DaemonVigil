@@ -351,7 +351,9 @@ async def process_heartbeat(
         result["debug_info"]["cost"] = usage_data['total_cost']
         result["debug_info"]["elapsed_seconds"] = round(elapsed, 1)
 
-        raw_result = sdk_response.get("structured_output", sdk_response.get("result", ""))
+        raw_result = sdk_response.get("structured_output")
+        if raw_result is None:
+            raw_result = sdk_response.get("result", "")
         logger.info(f"Heartbeat output for user {user_id} (type={type(raw_result).__name__}): {str(raw_result)[:500]}")
 
         try:
