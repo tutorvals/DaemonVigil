@@ -5,6 +5,22 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Stop an existing tracked process if present.
+if [ -f ".daemon_vigil.pid" ]; then
+    OLD_PID="$(cat .daemon_vigil.pid)"
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "Stopping existing Daemon Vigil process (PID: $OLD_PID)..."
+        kill "$OLD_PID" || true
+        sleep 1
+    fi
+    rm -f .daemon_vigil.pid
+fi
+
+# Best-effort cleanup for stray Daemon Vigil processes not tracked by the pid file.
+pkill -f "/home/.*/daemonVigil/venv/bin/python main.py --silent" 2>/dev/null || true
+pkill -f "python main.py --silent" 2>/dev/null || true
+sleep 1
+
 # Activate venv if it exists
 if [ -f "venv/bin/activate" ]; then
     source venv/bin/activate
