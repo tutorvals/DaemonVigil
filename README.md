@@ -1,184 +1,244 @@
 # Daemon Vigil
-A proactive AI companion that checks in via Telegram. Unlike a reactive chatbot, Daemon Vigil runs on a heartbeat, reviews recent context, and decides whether to send a message.
 
-## Features
-- **Proactive Check-ins**: Claude decides whether to message or stay silent
-- **Heartbeat System**: Runs every 15 minutes (configurable)
-- **Time Awareness**: All messages timestamped, Claude can track time gaps
-- **Usage Tracking**: Monitor token usage and estimated costs per day/week/month
-- **Per-User Storage**: Separate history, memory, and config per Telegram user
-- **Model Switching**: Easily switch between Sonnet, Opus, Haiku
-- **Command System**: Control bot behavior via Telegram commands
+Daemon Vigil is a proactive Telegram companion backed by Claude. Instead of waiting for commands, it runs on a heartbeat, reviews recent context for each user, and decides whether to send a check-in or stay silent.
 
-## Setup
+## What It Does
 
-### 1. Clone the Repository
+- Receives Telegram messages and replies through Claude
+- Runs scheduled per-user heartbeat checks
+- Stores per-user conversation history, scratchpad notes, and preferences
+- Supports per-user model selection, heartbeat interval, timezone, and quiet hours
+- Tracks usage and estimated cost across requests
+
+## Architecture Summary
+
+- `main.py`: application entrypoint
+- `src/telegram_bot.py`: Telegram polling and inbound message handling
+- `src/claude.py`: Claude Agent SDK integration using local Claude Code auth
+- `src/scheduler.py`: per-user APScheduler heartbeat jobs
+- `src/storage.py`: JSON-backed user registry and per-user storage
+- `src/commands.py`: Telegram `...` command handlers
+- `data/users/<user_id>/`: per-user messages, scratchpad, and config
+- `data/users.json`: user registry
+
+## Prerequisites
+
+- Python 3.10+ recommended
+- A Telegram bot token from `@BotFather`
+- Claude Code installed locally and already authenticated
+- A Unix-like environment if you want to use `start.sh` and `stop.sh`
+
+This project does not use an Anthropic API key in normal operation. It calls Claude through `claude-agent-sdk`, which in turn relies on your local Claude Code login.
+
+## Quickstart
+
+### 1. Clone the repo
+
+```bash
 git clone https://github.com/tutorvals/DaemonVigil.git
+cd DaemonVigil
+```
 
-### 2. Create Virtual Environment
+### 2. Create and activate a virtual environment
+
+```bash
 python3 -m venv venv
-source venv/bin/activate  # On Linux/Mac
-# OR
-venv\Scripts\activate     # On Windows
+source venv/bin/activate
+```
 
-### 3. Install Dependencies
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-### 4. Configure Secrets
-Create a `.env` file with:
+### 4. Create `.env`
+
+Create a `.env` file in the project root:
 
 ```env
 TELEGRAM_BOT_TOKEN=123456789:ABC...
 TELEGRAM_CHAT_ID=123456789
 ```
 
-Daemon Vigil uses local Claude Code authentication via the Python Agent SDK. It does not require an Anthropic API key for normal operation.
+Notes:
 
-**Getting Telegram credentials:**
-- **Telegram Bot Token**:
-  1. Open Telegram and search for `@BotFather`
-  2. Send `/newbot` and follow prompts
-  3. Copy the token
-- **Telegram Chat ID**:
-  1. Message your bot in Telegram
-  2. Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
-  3. Find `"chat":{"id":123456789}` in the response
+- `TELEGRAM_BOT_TOKEN` is required.
+- `TELEGRAM_CHAT_ID` is optional for normal message handling, but useful for startup/shutdown notifications and older single-user workflows.
+- In multi-user mode, any Telegram user who messages the bot is auto-registered.
 
-### 5. Configure Settings (Optional)
-Edit `config.yaml` to customize:
+### 5. Adjust `config.yaml` if needed
+
+Default config:
+
 ```yaml
-heartbeat_interval_minutes: 15        # How often to check in
-max_context_messages: 50              # Conversation history size
-claude_model: opus                    # Model alias to use
+claude_model: opus
+heartbeat_interval_minutes: 15
+max_context_messages: 50
 ```
 
-## Running
+These values act as defaults for newly created users. Each user then gets their own `data/users/<user_id>/user_config.json`.
 
-### Foreground (Testing)
-Run directly in your terminal:
+### 6. Make sure Claude Code works locally
+
+Before running the bot, confirm your Claude Code setup is already authenticated on the same machine/account that will run Daemon Vigil.
+
+### 7. Start the bot
+
+Foreground:
+
 ```bash
 python main.py
 ```
 
-**Silent mode** (no startup/shutdown messages):
+Foreground without startup/shutdown Telegram notifications:
+
 ```bash
 python main.py --silent
 ```
 
-### Background (Production) Using tmux 
+Background helper script:
+
 ```bash
-# Start new tmux session
-tmux new -s daemon-vigil
-
-# Inside tmux, run the app
-python main.py
-
-# Detach from tmux: Press Ctrl+B, then D
-# App keeps running in background
+bash start.sh
 ```
 
-**To reconnect later:**
+Stop the background process:
+
 ```bash
-tmux attach -t daemon-vigil
+bash stop.sh
 ```
 
-**To list all tmux sessions:**
-```bash
-tmux ls
-```
+### 8. First-run check
 
-**To kill the session:**
-```bash
-tmux kill-session -t daemon-vigil
-```
+1. Send `/start` or any normal message to your bot in Telegram.
+2. Confirm you receive a reply.
+3. Run `...help` and `...heartbeat status`.
+4. Check logs with `tail -f daemon_vigil.log`.
+
+## Telegram Setup Notes
+
+To get a bot token:
+
+1. Open Telegram and message `@BotFather`.
+2. Run `/newbot`.
+3. Copy the token into `.env` as `TELEGRAM_BOT_TOKEN`.
+
+To get your chat ID:
+
+1. Send a message to your bot.
+2. Open `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`.
+3. Find the chat id in the JSON response.
+
+## Runtime Behavior
+
+- The bot uses Telegram long polling, not webhooks.
+- On first message from a new user, that user is auto-registered in [data/users.json](/home/tutorvals/claudeCodeLand/daemonVigil/data/users.json).
+- Each user gets separate files under [data/users](/home/tutorvals/claudeCodeLand/daemonVigil/data/users).
+- Heartbeats are scheduled per active user.
+- Quiet hours suppress scheduled heartbeats, but not direct replies to incoming messages.
+- Usage is logged to [data/api_usage.jsonl](/home/tutorvals/claudeCodeLand/daemonVigil/data/api_usage.jsonl).
 
 ## Telegram Commands
-All commands start with `...` (three dots).
 
-### Status & Information
-**`...status`** - Show current model, API costs, and context info
+All bot commands start with `...`.
 
-**`...help`** - Show list of available commands
+### General
 
-### Model Switching
-**`...model`** - Show current model and available options
+- `...help`: show available commands
+- `...status`: show usage/cost information
 
-**`...model <name>`** - Switch to a different model
-```
-...model sonnet    # balanced
-...model opus      # strongest
-...model haiku     # cheapest
-```
+### Model
 
-### Heartbeat Control
-**`...heartbeat test`** - Run manual heartbeat with debug output
-- Shows Claude's reasoning
-- Shows whether it would message or stay silent
-- Doesn't actually send the message (dry run)
+- `...model`: show current model
+- `...model sonnet`
+- `...model sonnet-4.5`
+- `...model opus`
+- `...model haiku`
 
-**`...heartbeat on`** - Enable automatic heartbeats
+### Heartbeats
 
-**`...heartbeat off`** - Disable automatic heartbeats
+- `...heartbeat test`: dry-run a heartbeat and show Claude's reasoning
+- `...heartbeat on`: enable scheduled heartbeats
+- `...heartbeat off`: disable scheduled heartbeats
+- `...heartbeat status`: show heartbeat status
+- `...heartbeat interval <minutes>`: set the user's heartbeat interval
 
-**`...heartbeat status`** - Show heartbeat status
+### Quiet Hours
 
-**`...heartbeat interval <minutes>`** - Change heartbeat interval
-```
-...heartbeat interval 30    # Check in every 30 minutes
-...heartbeat interval 60    # Check in every hour
-```
+- `...quiethours status`
+- `...quiethours on`
+- `...quiethours off`
+- `...quiethours set <HH:MM> <HH:MM>`
+- `...quiethours timezone <Area/City>`
 
-### Conversation Management
-**`...clear`** - Clear conversation history
-- Keeps scratchpad memory intact
+Example:
 
-**`...showmemory`** - Show scratchpad memory
-
-**`...clearmemory`** - Clear scratchpad memory
-
-## Logs
-Logs are written to `daemon_vigil.log` in the project directory.
-
-## Files & Directories
-```
-daemon-vigil/
-├── main.py                  # Entry point
-├── config.yaml              # Configuration
-├── .env                     # Secrets (not in git)
-├── daemon_vigil.log         # Log file (not in git)
-├── requirements.txt         # Python dependencies
-├── README.md                # This file
-├── data/                    # Data directory (not in git)
-│   ├── api_usage.jsonl      # Usage tracking
-│   ├── users.json           # User registry
-│   └── users/<user_id>/     # Per-user data
-├── src/                     # Source code
-│   ├── claude.py            # Claude SDK integration
-│   ├── commands.py          # Command handlers
-│   ├── config.py            # Configuration loading
-│   ├── scheduler.py         # Heartbeat scheduler
-│   ├── storage.py           # Per-user JSON storage
-│   ├── telegram_bot.py      # Telegram integration
-│   └── usage_tracker.py     # Cost tracking
-└── prompts/
-    └── system.md            # System prompt for Claude
+```text
+...quiethours timezone Europe/Paris
+...quiethours set 22:00 08:00
+...quiethours on
 ```
 
-## Runtime Model
-- The app uses `claude_agent_sdk` with Claude Code auth from your local machine.
-- Calls are configured to be stateless and minimal:
-  - no persisted session
-  - no Claude Code tools
-  - no CLAUDE.md/project settings injection
-  - Claude Code auto-memory disabled
-- The context sent to Claude is built by the app from:
-  - `prompts/system.md`
-  - current time
-  - recent conversation history
-  - per-user scratchpad notes
+### Conversation State
 
-## Contributing
-This is a personal project, feel free to fork and adapt for your own use.
+- `...clear`: clear conversation history only
+- `...showmemory`: show scratchpad notes
+- `...clearmemory`: clear scratchpad notes only
 
-## License
-MIT License - feel free to use and modify.
+## Data Layout
+
+```text
+daemonVigil/
+├── main.py
+├── config.yaml
+├── .env
+├── daemon_vigil.log
+├── data/
+│   ├── api_usage.jsonl
+│   ├── billing_thresholds.json
+│   ├── users.json
+│   └── users/
+│       └── <user_id>/
+│           ├── messages.json
+│           ├── scratchpad.json
+│           └── user_config.json
+├── prompts/
+│   └── system.md
+└── src/
+```
+
+## Migration From Older Single-User Storage
+
+If you have an older checkout that stored global `messages.json` and `scratchpad.json`, use:
+
+```bash
+python scripts/migrate_to_multi_user.py
+```
+
+That script expects `TELEGRAM_CHAT_ID` to be present in `.env`.
+
+## Development
+
+Run tests with the project virtualenv:
+
+```bash
+./venv/bin/pytest -q
+```
+
+## README Gaps That Were Fixed
+
+The previous README was usable as a rough overview, but it had several accuracy gaps:
+
+- It described the app mostly as single-user even though the code is multi-user.
+- It did not document quiet-hours commands.
+- It implied `TELEGRAM_CHAT_ID` was always required, while the code treats it as optional.
+- It did not clearly state that local Claude Code authentication is a real runtime prerequisite.
+- It documented `tmux`, but the repo already ships `start.sh` and `stop.sh` as the simpler default path.
+
+## Next Documentation Improvements
+
+- Add a dedicated troubleshooting section for Telegram auth, Claude auth, and empty replies.
+- Add an example `.env.example`.
+- Document the expected Python version explicitly in the project metadata.
+- Document deployment steps separately from local quickstart.
