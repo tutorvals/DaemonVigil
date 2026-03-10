@@ -96,9 +96,11 @@ class TestMultiUserScheduler:
         )
         scheduler.user_states["123"] = True
 
-        with patch("src.scheduler.claude.process_heartbeat", new_callable=AsyncMock) as mock_process:
+        mock_claude = MagicMock()
+        mock_claude.process_heartbeat = AsyncMock()
+        with patch("src.scheduler._get_claude_module", return_value=mock_claude):
             await scheduler.heartbeat_job("123")
-            mock_process.assert_not_called()
+            mock_claude.process_heartbeat.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_heartbeat_job_runs_outside_quiet_hours(self, scheduler, tmp_path, monkeypatch):
@@ -113,6 +115,8 @@ class TestMultiUserScheduler:
         scheduler.user_states["123"] = True
 
         with patch("src.scheduler.is_within_quiet_hours", return_value=False):
-            with patch("src.scheduler.claude.process_heartbeat", new_callable=AsyncMock) as mock_process:
+            mock_claude = MagicMock()
+            mock_claude.process_heartbeat = AsyncMock()
+            with patch("src.scheduler._get_claude_module", return_value=mock_claude):
                 await scheduler.heartbeat_job("123")
-                mock_process.assert_called_once()
+                mock_claude.process_heartbeat.assert_called_once()

@@ -156,6 +156,29 @@ class TestUserConfigStorage:
         assert config.timezone == "UTC"
         assert config.quiet_hours_enabled is False
 
+    def test_update_config_persists_new_fields_for_legacy_file(self, tmp_dir):
+        file_path = tmp_dir / "config.json"
+        file_path.write_text(json.dumps({
+            "user_id": "123",
+            "model": "opus",
+            "heartbeat_enabled": True,
+            "heartbeat_interval_minutes": 15,
+            "max_context_messages": 50,
+            "created_at": "",
+            "updated_at": "",
+        }))
+
+        cfg = UserConfigStorage(file_path, user_id="123")
+        cfg.update_config(quiet_hours_enabled=True, timezone="Europe/Paris")
+
+        raw = json.loads(file_path.read_text())
+        assert raw["quiet_hours_enabled"] is True
+        assert raw["timezone"] == "Europe/Paris"
+
+        config = cfg.get_config()
+        assert config.quiet_hours_enabled is True
+        assert config.timezone == "Europe/Paris"
+
 
 # ---- UserStorageManager ----
 

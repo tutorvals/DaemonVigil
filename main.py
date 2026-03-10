@@ -11,7 +11,6 @@ import sys
 from src.telegram_bot import TelegramBot
 from src.scheduler import HeartbeatScheduler
 from src.storage import get_user_storage
-from src import claude
 from src import config
 from src.app_state import set_instance
 
@@ -57,6 +56,7 @@ class DaemonVigil:
             user_config = user_storage.config.get_config()
 
             # Respond with user context
+            from src import claude
             await claude.respond_to_user(
                 user_message=message,
                 telegram_bot=self.telegram_bot,

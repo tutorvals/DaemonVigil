@@ -250,18 +250,27 @@ class UserConfigStorage(JSONStorage):
 
     def update_config(self, **kwargs):
         """Update specific config fields."""
-        data = self.read()
+        stored_data = self.read()
+        data = {**self._get_empty_structure(), **stored_data}
+        changed_fields = {}
 
         # Update specified fields
         for key, value in kwargs.items():
             if key in data and key not in ["user_id", "created_at"]:
+                if data.get(key) != value:
+                    changed_fields[key] = {"from": data.get(key), "to": value}
                 data[key] = value
 
         # Update timestamp
         data["updated_at"] = utc_now_iso()
 
         self.write(data)
-        logger.info(f"Updated config for user {self.user_id}: {kwargs}")
+        logger.info(
+            "Updated config for user %s: requested=%s changed=%s",
+            self.user_id,
+            kwargs,
+            changed_fields,
+        )
 
     def reset_to_defaults(self):
         """Reset config to default values."""

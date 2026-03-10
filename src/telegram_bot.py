@@ -9,6 +9,7 @@ from .storage import get_user_storage, get_user_registry
 from . import commands
 
 logger = logging.getLogger(__name__)
+POLLING_TIMEOUT_SECONDS = 2
 
 
 class TelegramBot:
@@ -119,7 +120,7 @@ class TelegramBot:
         logger.info("Starting Telegram bot...")
         await self.app.initialize()
         await self.app.start()
-        await self.app.updater.start_polling()
+        await self.app.updater.start_polling(timeout=POLLING_TIMEOUT_SECONDS)
         logger.info("Telegram bot is running")
 
     async def stop(self):

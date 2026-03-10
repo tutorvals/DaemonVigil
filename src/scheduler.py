@@ -7,11 +7,16 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from . import config
-from . import claude
 from .storage import get_user_storage, get_user_registry
 from .time_utils import get_local_now, is_within_quiet_hours, next_quiet_hours_end
 
 logger = logging.getLogger(__name__)
+
+
+def _get_claude_module():
+    """Import Claude integration lazily to reduce cold-start cost."""
+    from . import claude
+    return claude
 
 
 class MultiUserHeartbeatScheduler:
@@ -71,6 +76,7 @@ class MultiUserHeartbeatScheduler:
                 return
 
             # Process heartbeat with user context
+            claude = _get_claude_module()
             await claude.process_heartbeat(
                 telegram_bot=self.telegram_bot,
                 user_id=user_id,

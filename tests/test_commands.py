@@ -118,7 +118,7 @@ class TestHandleQuietHours:
 
         call_args = mock_bot.send_message.call_args
         assert "Quiet Hours Status" in call_args[0][0]
-        assert "State: Disabled" in call_args[0][0]
+        assert "Enabled: No" in call_args[0][0]
         assert "Timezone: UTC" in call_args[0][0]
         assert call_args[1]["chat_id"] == 900
 
