@@ -8,7 +8,6 @@ Daemon Vigil is a proactive Telegram companion backed by Claude. Instead of wait
 - Runs scheduled per-user heartbeat checks
 - Stores per-user conversation history, scratchpad notes, and preferences
 - Supports per-user model selection, heartbeat interval, timezone, and quiet hours
-- Tracks usage and estimated cost across requests
 
 ## Architecture Summary
 
@@ -137,7 +136,6 @@ To get your chat ID:
 - Each user gets separate files under [data/users](/home/tutorvals/claudeCodeLand/daemonVigil/data/users).
 - Heartbeats are scheduled per active user.
 - Quiet hours suppress scheduled heartbeats, but not direct replies to incoming messages.
-- Usage is logged to [data/api_usage.jsonl](/home/tutorvals/claudeCodeLand/daemonVigil/data/api_usage.jsonl).
 
 ## Telegram Commands
 
@@ -146,7 +144,7 @@ All bot commands start with `...`.
 ### General
 
 - `...help`: show available commands
-- `...status`: show usage/cost information
+- `...status`: show model, heartbeat, and context information
 
 ### Model
 
@@ -195,8 +193,6 @@ daemonVigil/
 ├── .env
 ├── daemon_vigil.log
 ├── data/
-│   ├── api_usage.jsonl
-│   ├── billing_thresholds.json
 │   ├── users.json
 │   └── users/
 │       └── <user_id>/

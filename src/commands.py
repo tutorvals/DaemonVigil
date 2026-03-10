@@ -2,7 +2,6 @@
 import logging
 from typing import Optional
 
-from . import usage_tracker
 from . import config
 from .storage import get_user_storage
 from .time_utils import (
@@ -80,12 +79,61 @@ async def handle_status(telegram_bot, user_id: str) -> None:
     """
     Handle the ...status command.
 
-    Shows current model and API cost breakdown for the user.
+    Shows current model, heartbeat settings, and context information.
     """
-    logger.info(f"Handling status command for user {user_id}")
+    from .app_state import get_instance
 
-    # Get user-specific report
-    report = usage_tracker.format_usage_report(user_id)
+    logger.info(f"Handling status command for user {user_id}")
+    user_storage = get_user_storage(user_id)
+    user_config = user_storage.config.get_config()
+
+    report = "Status Report\n\n"
+    report += f"Model: {user_config.model}\n\n"
+
+    app = get_instance()
+    if app and app.scheduler:
+        try:
+            status = app.scheduler.get_user_status(user_id)
+            report += "Heartbeat:\n"
+            report += f"State: {'Enabled' if status.get('enabled', True) else 'Disabled'}\n"
+            report += f"Interval: {user_config.heartbeat_interval_minutes} minutes\n"
+            if status.get("next_run"):
+                report += f"Next run: {status['next_run']}\n"
+            else:
+                report += "Next run: Not scheduled\n"
+            if user_config.quiet_hours_enabled:
+                report += (
+                    f"Quiet hours: {user_config.quiet_hours_start}-{user_config.quiet_hours_end} "
+                    f"({user_config.timezone})\n"
+                )
+                report += (
+                    f"Quiet hours active now: "
+                    f"{'Yes' if status.get('quiet_hours_active_now') else 'No'}\n"
+                )
+                if status.get("quiet_hours_resume_at"):
+                    report += (
+                        f"Heartbeats resume: "
+                        f"{status['quiet_hours_resume_at'].strftime('%Y-%m-%d %H:%M %Z')}\n"
+                    )
+            else:
+                report += "Quiet hours: Disabled\n"
+            report += "\n"
+        except Exception as e:
+            logger.error(f"Error getting status report for user {user_id}: {e}")
+            report += "Heartbeat:\nUnavailable\n\n"
+
+    messages = user_storage.messages.get_recent_messages()
+    notes = user_storage.scratchpad.get_notes()
+    report += "Context:\n"
+    report += f"Messages in history: {len(messages)}\n"
+    report += f"Scratchpad notes: {len(notes)}\n"
+
+    if notes:
+        note_preview = notes[-1]["note"]
+        if len(note_preview) > 80:
+            note_preview = note_preview[:77] + "..."
+        report += f"Last note: {note_preview}\n"
+
     await telegram_bot.send_message(report, chat_id=int(user_id))
 
 
@@ -192,7 +240,6 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
             response += f"System prompt: {debug_info.get('system_prompt_length', '?')} chars\n"
             if "input_tokens" in debug_info:
                 response += f"Tokens: {debug_info['input_tokens']} in / {debug_info['output_tokens']} out\n"
-                response += f"Cost: ${debug_info.get('cost', 0):.6f}\n"
             if "elapsed_seconds" in debug_info:
                 response += f"Time: {debug_info['elapsed_seconds']}s\n"
             response += "\n"
@@ -526,7 +573,7 @@ async def handle_help(telegram_bot, user_id: str) -> None:
     help_text = """Available Commands
 
 Status & Information
-• ...status - Show model, costs, context, heartbeat status
+• ...status - Show model, context, and heartbeat status
 • ...help - Show this help message
 
 Model Switching

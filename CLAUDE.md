@@ -17,7 +17,7 @@ A proactive AI companion that checks in via Telegram. Runs on a heartbeat — pe
 ## Key Files
 - `main.py` — entry point
 - `config.yaml` — configuration (heartbeat interval, model, context size)
-- `src/` — source code (claude, telegram, scheduler, commands, storage, usage tracking)
+- `src/` — source code (claude, telegram, scheduler, commands, storage)
 - `prompts/system.md` — system prompt for Claude
 - `data/` — runtime data (per-user storage in `data/users/<user_id>/`)
 - `scripts/migrate_to_multi_user.py` — migration script for existing single-user data

@@ -14,8 +14,7 @@ What it does:
   2. Moves messages.json and scratchpad.json into per-user directory
   3. Creates user_config.json with current settings
   4. Creates data/users.json (user registry)
-  5. Adds user_id to all api_usage.jsonl entries
-  6. Creates .backup files for rollback
+  5. Creates .backup files for rollback
 """
 
 import json
@@ -137,44 +136,6 @@ def migrate():
     print()
     print("   ℹ️  Note: You can manually edit users.json to update username/name")
 
-    # Migrate api_usage.jsonl - add user_id to all entries
-    print()
-    print("💰 Migrating api_usage.jsonl...")
-    old_usage = data_dir / "api_usage.jsonl"
-
-    if old_usage.exists():
-        backup_usage = data_dir / "api_usage.jsonl.backup"
-        shutil.copy(old_usage, backup_usage)
-        print(f"   💾 Backup created: {backup_usage}")
-
-        # Read all lines, add user_id, write back
-        lines = []
-        updated_count = 0
-        error_count = 0
-
-        with open(old_usage, 'r') as f:
-            for line in f:
-                try:
-                    entry = json.loads(line)
-                    # Only add user_id if not already present
-                    if "user_id" not in entry:
-                        entry["user_id"] = user_id
-                        updated_count += 1
-                    lines.append(json.dumps(entry) + '\n')
-                except json.JSONDecodeError:
-                    # Keep malformed lines as-is
-                    lines.append(line)
-                    error_count += 1
-
-        with open(old_usage, 'w') as f:
-            f.writelines(lines)
-
-        print(f"   ✅ Updated {updated_count} entries with user_id")
-        if error_count > 0:
-            print(f"   ⚠️  {error_count} malformed lines kept as-is")
-    else:
-        print(f"   ℹ️  No api_usage.jsonl found (will be created on first API call)")
-
     # Summary
     print()
     print("=" * 60)
@@ -186,15 +147,12 @@ def migrate():
     print(f"  • Migrated messages and scratchpad")
     print(f"  • Created user config")
     print(f"  • Created user registry")
-    print(f"  • Updated API usage logs")
     print()
     print("Backups created:")
     if old_messages.exists() or (data_dir / "messages.json.backup").exists():
         print(f"  • {data_dir / 'messages.json.backup'}")
     if old_scratchpad.exists() or (data_dir / "scratchpad.json.backup").exists():
         print(f"  • {data_dir / 'scratchpad.json.backup'}")
-    if old_usage.exists():
-        print(f"  • {data_dir / 'api_usage.jsonl.backup'}")
     print()
     print("Next steps:")
     print("  1. Review the migrated files in data/users/" + user_id)

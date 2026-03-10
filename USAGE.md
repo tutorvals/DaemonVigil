@@ -22,7 +22,7 @@ python main.py --silent   # foreground, no startup/shutdown messages
 
 | Command | Description |
 |---|---|
-| `...status` | Show model, costs, and context info |
+| `...status` | Show model, heartbeat, and context info |
 | `...model` | Show current model |
 | `...model sonnet/opus/haiku` | Switch model |
 | `...heartbeat test` | Dry-run a heartbeat |

@@ -35,6 +35,18 @@ def test_parse_heartbeat_decision_falls_back_to_assistant_text_json():
     assert decision == {"action": "stay_silent", "reasoning": "Nothing to add"}
 
 
+def test_parse_heartbeat_decision_parses_fenced_json_result():
+    decision = _parse_heartbeat_decision({
+        "structured_output": None,
+        "result": '```json\n{"action":"send_message","message":"hi","reasoning":"asked for ping"}\n```',
+        "assistant_text": "",
+    })
+
+    assert decision["action"] == "send_message"
+    assert decision["message"] == "hi"
+    assert decision["reasoning"] == "asked for ping"
+
+
 def test_parse_heartbeat_decision_reports_empty_sdk_output():
     decision = _parse_heartbeat_decision({
         "structured_output": None,

@@ -46,14 +46,11 @@ class MultiUserHeartbeatScheduler:
             user_id: The user ID to process heartbeat for
         """
         try:
-            logger.info("=" * 50)
-            logger.info(f"HEARTBEAT TRIGGERED for user {user_id}")
-            logger.info(f"Time: {datetime.now(timezone.utc).isoformat()}")
-            logger.info("=" * 50)
+            logger.info("Heartbeat triggered for user %s at %s", user_id, datetime.now(timezone.utc).isoformat())
 
             # Check if enabled for this user
             if not self.is_enabled(user_id):
-                logger.info(f"Heartbeat disabled for user {user_id}, skipping")
+                logger.info("Heartbeat disabled for user %s, skipping", user_id)
                 return
 
             # Get user-specific storage and config
@@ -77,14 +74,25 @@ class MultiUserHeartbeatScheduler:
 
             # Process heartbeat with user context
             claude = _get_claude_module()
-            await claude.process_heartbeat(
+            result = await claude.process_heartbeat(
                 telegram_bot=self.telegram_bot,
                 user_id=user_id,
                 user_storage=user_storage,
                 user_config=user_config
             )
-
-            logger.info(f"Heartbeat completed successfully for user {user_id}")
+            if isinstance(result, dict):
+                logger.info(
+                    "Heartbeat finished for user %s: tool_called=%s error=%s",
+                    user_id,
+                    result.get("tool_called"),
+                    result.get("error"),
+                )
+            else:
+                logger.warning(
+                    "Heartbeat finished for user %s with unexpected result type=%s",
+                    user_id,
+                    type(result).__name__,
+                )
 
         except Exception as e:
             logger.error(f"Error in heartbeat job for user {user_id}: {e}", exc_info=True)
@@ -107,10 +115,11 @@ class MultiUserHeartbeatScheduler:
             interval_minutes = config.get_heartbeat_interval()
 
         job_id = f"heartbeat_{user_id}"
+        trigger = IntervalTrigger(minutes=interval_minutes)
 
         self.scheduler.add_job(
             self.heartbeat_job,
-            trigger=IntervalTrigger(minutes=interval_minutes),
+            trigger=trigger,
             args=[user_id],
             id=job_id,
             replace_existing=True,
@@ -129,7 +138,7 @@ class MultiUserHeartbeatScheduler:
         # Log next run time (may not be set if scheduler hasn't started yet)
         job = self.scheduler.get_job(job_id)
         if job and getattr(job, 'next_run_time', None):
-            logger.info(f"Next heartbeat for user {user_id}: {job.next_run_time}")
+            logger.info("Next heartbeat for user %s: %s", user_id, job.next_run_time)
 
     def remove_user(self, user_id: str):
         """Remove a user from the scheduler."""

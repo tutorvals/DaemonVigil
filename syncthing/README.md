@@ -5,8 +5,6 @@ Two-way sync of the `data/` directory between VPS and local PC.
 ## What gets synced
 
 Only `data/` directory:
-- `api_usage.jsonl` — usage log
-- `billing_thresholds.json` — threshold state
 - `users.json` — user registry
 - `users/<user_id>/` — per-user messages, scratchpad, config
 

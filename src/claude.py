@@ -11,7 +11,6 @@ from claude_agent_sdk import ClaudeAgentOptions, query
 
 from . import config
 from .storage import UserStorageManager, UserConfig
-from . import usage_tracker
 
 logger = logging.getLogger(__name__)
 CLAUDE_CLI_PATH = Path.home() / ".local" / "bin" / "claude"
@@ -68,6 +67,8 @@ def _extract_text_from_sdk_message(message) -> str:
     parts = []
     for block in content:
         text = getattr(block, "text", None)
+        if text is None and isinstance(block, dict):
+            text = block.get("text")
         if text:
             parts.append(text)
 
@@ -219,6 +220,29 @@ async def _run_claude_sdk(
 
 def _parse_heartbeat_decision(sdk_response: dict) -> dict:
     """Normalize the heartbeat decision from SDK output into a dict."""
+    def parse_json_candidate(raw_text: str) -> dict | None:
+        candidate = raw_text.strip()
+        if not candidate:
+            return None
+
+        parse_attempts = [candidate]
+        if candidate.startswith("```") and candidate.endswith("```"):
+            fence_lines = candidate.splitlines()
+            if len(fence_lines) >= 3:
+                parse_attempts.append("\n".join(fence_lines[1:-1]).strip())
+
+        for attempt in parse_attempts:
+            if not attempt:
+                continue
+            try:
+                parsed = json.loads(attempt)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(parsed, dict):
+                return parsed
+
+        return None
+
     raw_structured = sdk_response.get("structured_output")
     if isinstance(raw_structured, dict):
         return raw_structured
@@ -233,16 +257,8 @@ def _parse_heartbeat_decision(sdk_response: dict) -> dict:
         if not isinstance(raw_candidate, str):
             continue
 
-        candidate = raw_candidate.strip()
-        if not candidate:
-            continue
-
-        try:
-            parsed = json.loads(candidate)
-        except json.JSONDecodeError:
-            continue
-
-        if isinstance(parsed, dict):
+        parsed = parse_json_candidate(raw_candidate)
+        if parsed is not None:
             return parsed
 
     details = []
@@ -260,6 +276,14 @@ def _parse_heartbeat_decision(sdk_response: dict) -> dict:
         "action": "stay_silent",
         "reasoning": f"Claude returned no parseable heartbeat decision ({detail_text})"
     }
+
+
+def _heartbeat_decision_missing(decision: dict) -> bool:
+    """Return True when the parsed decision is the empty-output fallback."""
+    reasoning = decision.get("reasoning", "")
+    return isinstance(reasoning, str) and reasoning.startswith(
+        "Claude returned no parseable heartbeat decision"
+    )
 
 
 def load_system_prompt() -> str:
@@ -357,83 +381,108 @@ async def process_heartbeat(
     # Call Claude Agent SDK
     try:
         model = config.resolve_model_name(user_config.model)
-        sdk_response = await _run_claude_sdk(
-            prompt=prompt,
-            system_prompt=full_system_prompt,
-            model=model,
-            json_schema=HEARTBEAT_SCHEMA
-        )
+        
+        async def run_heartbeat_attempt(attempt_name: str, attempt_prompt: str, attempt_schema: str | None) -> dict:
+            sdk_response = await _run_claude_sdk(
+                prompt=attempt_prompt,
+                system_prompt=full_system_prompt,
+                model=model,
+                json_schema=attempt_schema
+            )
 
-        # Extract usage from SDK response
-        usage = sdk_response.get("modelUsage", sdk_response.get("usage", {}))
-        input_tokens = usage.get("input_tokens", 0)
-        output_tokens = usage.get("output_tokens", 0)
+            usage = sdk_response.get("modelUsage", sdk_response.get("usage", {}))
+            input_tokens = usage.get("input_tokens", 0)
+            output_tokens = usage.get("output_tokens", 0)
+            logger.debug(
+                "Heartbeat SDK response for user %s attempt=%s input_tokens=%s output_tokens=%s "
+                "subtype=%s stop_reason=%s result_len=%s assistant_len=%s",
+                user_id,
+                attempt_name,
+                input_tokens,
+                output_tokens,
+                sdk_response.get("subtype"),
+                sdk_response.get("stop_reason"),
+                len(sdk_response.get("result") or ""),
+                len(sdk_response.get("assistant_text") or ""),
+            )
+            return sdk_response
 
-        # Track usage and cost
-        usage_data = usage_tracker.calculate_cost(
-            model=model,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens
-        )
-        usage_data["request_type"] = "heartbeat"
-        usage_data["user_id"] = user_id
-        usage_tracker.log_api_usage(usage_data)
-
-        # Check billing threshold
-        await usage_tracker.check_and_notify_threshold(
-            telegram_bot=telegram_bot,
-            last_cost=usage_data['total_cost'],
-            user_id=user_id
-        )
-
-        elapsed = time.monotonic() - heartbeat_start
-        logger.info(f"API Usage (user {user_id}) - Input: {input_tokens}, "
-                   f"Output: {output_tokens}, "
-                   f"Cost: ${usage_data['total_cost']:.6f}, "
-                   f"Time: {elapsed:.1f}s")
-
-        result["debug_info"]["input_tokens"] = input_tokens
-        result["debug_info"]["output_tokens"] = output_tokens
-        result["debug_info"]["cost"] = usage_data['total_cost']
-        result["debug_info"]["elapsed_seconds"] = round(elapsed, 1)
-
-        raw_result = sdk_response.get("structured_output")
-        if raw_result is None:
-            raw_result = sdk_response.get("result", "")
-        logger.info(
-            "Heartbeat output for user %s (structured=%s result_len=%s assistant_len=%s): %s",
-            user_id,
-            type(sdk_response.get("structured_output")).__name__,
-            len(sdk_response.get("result") or ""),
-            len(sdk_response.get("assistant_text") or ""),
-            str(raw_result)[:500],
+        sdk_response = await run_heartbeat_attempt(
+            attempt_name="structured",
+            attempt_prompt=prompt,
+            attempt_schema=HEARTBEAT_SCHEMA,
         )
 
         decision = _parse_heartbeat_decision(sdk_response)
-        if decision.get("reasoning", "").startswith("Claude returned no parseable heartbeat decision"):
-            logger.warning("Heartbeat decision missing/invalid for user %s: %s", user_id, decision["reasoning"])
+        if _heartbeat_decision_missing(decision):
+            logger.warning(
+                "Heartbeat structured-output decision missing for user %s, retrying with plain JSON: %s",
+                user_id,
+                decision["reasoning"],
+            )
+            fallback_prompt = (
+                f"{prompt}\n\n"
+                "Return ONLY a valid JSON object with keys: "
+                "\"action\" (send_message or stay_silent), "
+                "\"reasoning\" (short string), "
+                "\"message\" (required only if action is send_message)."
+            )
+            fallback_response = await run_heartbeat_attempt(
+                attempt_name="plain_json_retry",
+                attempt_prompt=fallback_prompt,
+                attempt_schema=None,
+            )
+            fallback_decision = _parse_heartbeat_decision(fallback_response)
+            if not _heartbeat_decision_missing(fallback_decision):
+                logger.info("Heartbeat plain-JSON retry succeeded for user %s", user_id)
+                sdk_response = fallback_response
+                decision = fallback_decision
+            else:
+                logger.warning(
+                    "Heartbeat plain-JSON retry still missing/invalid for user %s: %s",
+                    user_id,
+                    fallback_decision["reasoning"],
+                )
 
-        logger.debug(f"Heartbeat decision for user {user_id}: action={decision.get('action')}")
+        logger.info(
+            "Heartbeat decision for user %s: action=%s",
+            user_id,
+            decision.get("action"),
+        )
         result["reasoning"] = decision.get("reasoning")
 
         if decision.get("action") == "send_message" and decision.get("message"):
             message = decision["message"]
-            logger.info(f"Claude decided to send message to user {user_id}: {message[:50]}...")
+            logger.info("Heartbeat sending message to user %s", user_id)
 
             result["tool_called"] = True
             result["message_sent"] = message
 
             # Send via Telegram to specific user (unless debug mode)
             if not debug:
+                logger.info("Sending heartbeat Telegram message to user %s", user_id)
                 await telegram_bot.send_message(message, chat_id=int(user_id))
                 user_storage.messages.add_message("assistant", message)
+                logger.info("Heartbeat Telegram send complete for user %s", user_id)
         else:
-            logger.info("Claude chose not to send a message this cycle")
+            logger.info("Heartbeat stayed silent for user %s", user_id)
+
+        total_usage = sdk_response.get("modelUsage", sdk_response.get("usage", {}))
+        result["debug_info"]["input_tokens"] = total_usage.get("input_tokens", 0)
+        result["debug_info"]["output_tokens"] = total_usage.get("output_tokens", 0)
+        result["debug_info"]["elapsed_seconds"] = round(time.monotonic() - heartbeat_start, 1)
 
     except Exception as e:
         logger.error(f"Error in Claude Agent SDK call: {e}", exc_info=True)
         result["error"] = str(e)
 
+    logger.info(
+        "Heartbeat processing complete for user %s: tool_called=%s error=%s elapsed=%.2fs",
+        user_id,
+        result["tool_called"],
+        result["error"],
+        time.monotonic() - heartbeat_start,
+    )
     return result
 
 
@@ -504,27 +553,14 @@ async def respond_to_user(
         input_tokens = usage.get("input_tokens", 0)
         output_tokens = usage.get("output_tokens", 0)
 
-        # Track usage and cost
-        usage_data = usage_tracker.calculate_cost(
-            model=model,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens
+        logger.info(
+            "Claude SDK usage for user %s - Input: %s, Output: %s, subtype=%s stop_reason=%s",
+            user_id,
+            input_tokens,
+            output_tokens,
+            sdk_response.get("subtype"),
+            sdk_response.get("stop_reason"),
         )
-        usage_data["request_type"] = "user_response"
-        usage_data["user_id"] = user_id
-        usage_data["user_message_preview"] = user_message[:50]
-        usage_tracker.log_api_usage(usage_data)
-
-        # Check billing threshold
-        await usage_tracker.check_and_notify_threshold(
-            telegram_bot=telegram_bot,
-            last_cost=usage_data['total_cost'],
-            user_id=user_id
-        )
-
-        logger.info(f"API Usage (user {user_id}) - Input: {input_tokens}, "
-                   f"Output: {output_tokens}, "
-                   f"Cost: ${usage_data['total_cost']:.6f}")
 
         # Extract text response
         response_text = sdk_response.get("result", "") or ""
