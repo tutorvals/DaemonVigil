@@ -56,6 +56,13 @@ class TestCommandDispatch:
             mock_hb.assert_called_once_with("status", mock_bot, "123")
 
     @pytest.mark.asyncio
+    async def test_quiet_hours_dispatches(self, mock_bot, tmp_storage):
+        with patch("src.commands.handle_quiet_hours", new_callable=AsyncMock) as mock_qh:
+            result = await handle_command("quiethours status", mock_bot, "123")
+            assert result is True
+            mock_qh.assert_called_once_with("status", mock_bot, "123")
+
+    @pytest.mark.asyncio
     async def test_help_dispatches(self, mock_bot, tmp_storage):
         with patch("src.commands.handle_help", new_callable=AsyncMock) as mock_help:
             result = await handle_command("help", mock_bot, "123")
@@ -98,7 +105,55 @@ class TestHandleHelp:
         mock_bot.send_message.assert_called_once()
         call_args = mock_bot.send_message.call_args
         assert "Available Commands" in call_args[0][0]
+        assert "...quiethours status" in call_args[0][0]
         assert call_args[1]["chat_id"] == 456
+
+
+class TestHandleQuietHours:
+    @pytest.mark.asyncio
+    async def test_status_shows_defaults(self, mock_bot, tmp_storage):
+        from src.commands import handle_quiet_hours
+
+        await handle_quiet_hours("status", mock_bot, "900")
+
+        call_args = mock_bot.send_message.call_args
+        assert "Quiet Hours Status" in call_args[0][0]
+        assert "State: Disabled" in call_args[0][0]
+        assert "Timezone: UTC" in call_args[0][0]
+        assert call_args[1]["chat_id"] == 900
+
+    @pytest.mark.asyncio
+    async def test_set_and_enable_quiet_hours(self, mock_bot, tmp_storage):
+        from src.commands import handle_quiet_hours
+        from src.storage import get_user_storage
+
+        await handle_quiet_hours("timezone Europe/Paris", mock_bot, "901")
+        await handle_quiet_hours("set 22:00 08:00", mock_bot, "901")
+        await handle_quiet_hours("on", mock_bot, "901")
+
+        user_config = get_user_storage("901").config.get_config()
+        assert user_config.timezone == "Europe/Paris"
+        assert user_config.quiet_hours_start == "22:00"
+        assert user_config.quiet_hours_end == "08:00"
+        assert user_config.quiet_hours_enabled is True
+
+    @pytest.mark.asyncio
+    async def test_rejects_invalid_timezone(self, mock_bot, tmp_storage):
+        from src.commands import handle_quiet_hours
+
+        await handle_quiet_hours("timezone Mars/Olympus_Mons", mock_bot, "902")
+
+        call_args = mock_bot.send_message.call_args
+        assert "Invalid timezone" in call_args[0][0]
+
+    @pytest.mark.asyncio
+    async def test_rejects_equal_quiet_hours(self, mock_bot, tmp_storage):
+        from src.commands import handle_quiet_hours
+
+        await handle_quiet_hours("set 08:00 08:00", mock_bot, "903")
+
+        call_args = mock_bot.send_message.call_args
+        assert "Invalid quiet-hours window" in call_args[0][0]
 
 
 # ---- Clear command ----

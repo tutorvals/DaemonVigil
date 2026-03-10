@@ -1,6 +1,6 @@
 """JSON storage helpers for messages and scratchpad."""
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import threading
@@ -10,6 +10,11 @@ from dataclasses import dataclass, asdict
 from . import config
 
 logger = logging.getLogger(__name__)
+
+
+def utc_now_iso() -> str:
+    """Return an ISO-8601 UTC timestamp using timezone-aware datetime."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 class JSONStorage:
@@ -53,7 +58,7 @@ class MessageStorage(JSONStorage):
         """Add a message to the conversation history."""
         data = self.read()
         data["messages"].append({
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utc_now_iso(),
             "role": role,
             "content": content
         })
@@ -86,7 +91,7 @@ class ScratchpadStorage(JSONStorage):
         """Add a note to the scratchpad."""
         data = self.read()
         data["notes"].append({
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": utc_now_iso(),
             "note": note
         })
         self.write(data)
@@ -127,6 +132,10 @@ class UserConfig:
     model: str = "opus"
     heartbeat_enabled: bool = True
     heartbeat_interval_minutes: int = 15
+    timezone: str = "UTC"
+    quiet_hours_enabled: bool = False
+    quiet_hours_start: str = "22:00"
+    quiet_hours_end: str = "08:00"
     max_context_messages: int = 50
     created_at: str = ""
     updated_at: str = ""
@@ -154,7 +163,7 @@ class UserRegistry(JSONStorage):
                 return User(**user)
 
         # Create new user entry
-        now = datetime.utcnow().isoformat() + "Z"
+        now = utc_now_iso()
         new_user = {
             "user_id": user_id,
             "telegram_username": username,
@@ -183,7 +192,7 @@ class UserRegistry(JSONStorage):
         data = self.read()
         for user in data["users"]:
             if user["user_id"] == user_id:
-                user["last_seen"] = datetime.utcnow().isoformat() + "Z"
+                user["last_seen"] = utc_now_iso()
                 self.write(data)
                 return
         logger.warning(f"User {user_id} not found for last_seen update")
@@ -217,12 +226,16 @@ class UserConfigStorage(JSONStorage):
 
     def _get_empty_structure(self) -> Dict:
         """Create default config for new user."""
-        now = datetime.utcnow().isoformat() + "Z"
+        now = utc_now_iso()
         return {
             "user_id": self.user_id,
             "model": config.get_claude_model(),
             "heartbeat_enabled": True,
             "heartbeat_interval_minutes": config.HEARTBEAT_INTERVAL_MINUTES,
+            "timezone": "UTC",
+            "quiet_hours_enabled": False,
+            "quiet_hours_start": "22:00",
+            "quiet_hours_end": "08:00",
             "max_context_messages": config.MAX_CONTEXT_MESSAGES,
             "created_at": now,
             "updated_at": now
@@ -231,7 +244,9 @@ class UserConfigStorage(JSONStorage):
     def get_config(self) -> UserConfig:
         """Get user configuration as dataclass."""
         data = self.read()
-        return UserConfig(**data)
+        defaults = self._get_empty_structure()
+        merged = {**defaults, **data}
+        return UserConfig(**merged)
 
     def update_config(self, **kwargs):
         """Update specific config fields."""
@@ -243,7 +258,7 @@ class UserConfigStorage(JSONStorage):
                 data[key] = value
 
         # Update timestamp
-        data["updated_at"] = datetime.utcnow().isoformat() + "Z"
+        data["updated_at"] = utc_now_iso()
 
         self.write(data)
         logger.info(f"Updated config for user {self.user_id}: {kwargs}")

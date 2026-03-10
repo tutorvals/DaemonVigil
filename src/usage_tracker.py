@@ -1,7 +1,7 @@
 """API usage tracking and cost calculation."""
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from collections import defaultdict
 from typing import Dict, Optional, List
@@ -29,6 +29,11 @@ USAGE_FILE = config.DATA_DIR / "api_usage.jsonl"
 THRESHOLD_STATE_FILE = config.DATA_DIR / "billing_thresholds.json"
 
 
+def utc_now_iso() -> str:
+    """Return an ISO-8601 UTC timestamp using timezone-aware datetime."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> Dict:
     """
     Calculate cost for a Claude API call.
@@ -54,7 +59,7 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> Dict:
         "output_cost": round(output_cost, 6),
         "total_cost": round(total_cost, 6),
         "model": model,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "timestamp": utc_now_iso()
     }
 
 
@@ -93,7 +98,6 @@ def get_usage_stats(days: int) -> Dict:
             "output_tokens": 0
         }
 
-    from datetime import timezone
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     total_input_tokens = 0
@@ -146,7 +150,6 @@ def load_threshold_state() -> Dict:
     Returns:
         dict with 'last_reset_date' and 'notified_thresholds' list
     """
-    from datetime import timezone
     today = datetime.now(timezone.utc).date().isoformat()
 
     if THRESHOLD_STATE_FILE.exists():
@@ -284,7 +287,6 @@ def get_user_usage_stats(user_id: str, days: int) -> Dict:
             "output_tokens": 0
         }
 
-    from datetime import timezone
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     total_input_tokens = 0
@@ -336,7 +338,6 @@ def get_all_users_usage_stats(days: int) -> List[Dict]:
     if not USAGE_FILE.exists():
         return []
 
-    from datetime import timezone
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     user_stats = defaultdict(lambda: {
@@ -399,7 +400,6 @@ def get_user_calls_in_window(user_id: str, hours: int = 5) -> int:
     if not USAGE_FILE.exists():
         return 0
 
-    from datetime import timezone
     cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
     count = 0
 
@@ -454,6 +454,22 @@ def format_usage_report(user_id: str) -> str:
             report += f"Interval: {user_config.heartbeat_interval_minutes} minutes\n"
             if status.get('next_run'):
                 report += f"Next run: {status['next_run'].strftime('%H:%M:%S UTC')}\n"
+            if user_config.quiet_hours_enabled:
+                report += (
+                    f"Quiet hours: {user_config.quiet_hours_start}-{user_config.quiet_hours_end} "
+                    f"({user_config.timezone})\n"
+                )
+                report += (
+                    f"Quiet hours active now: "
+                    f"{'Yes' if status.get('quiet_hours_active_now') else 'No'}\n"
+                )
+                if status.get('quiet_hours_resume_at'):
+                    report += (
+                        f"Heartbeats resume: "
+                        f"{status['quiet_hours_resume_at'].strftime('%H:%M %Z')}\n"
+                    )
+            else:
+                report += "Quiet hours: Disabled\n"
             report += "\n"
         except (AttributeError, KeyError):
             report += "Heartbeat:\n"

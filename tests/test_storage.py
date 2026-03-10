@@ -98,15 +98,26 @@ class TestUserConfigStorage:
 
         assert config.user_id == "123"
         assert config.heartbeat_enabled is True
+        assert config.timezone == "UTC"
+        assert config.quiet_hours_enabled is False
+        assert config.quiet_hours_start == "22:00"
+        assert config.quiet_hours_end == "08:00"
         assert config.max_context_messages == 50
 
     def test_update_config(self, tmp_dir):
         cfg = UserConfigStorage(tmp_dir / "config.json", user_id="123")
-        cfg.update_config(model="claude-3-haiku-20240307", heartbeat_enabled=False)
+        cfg.update_config(
+            model="claude-3-haiku-20240307",
+            heartbeat_enabled=False,
+            timezone="Europe/Paris",
+            quiet_hours_enabled=True,
+        )
 
         config = cfg.get_config()
         assert config.model == "claude-3-haiku-20240307"
         assert config.heartbeat_enabled is False
+        assert config.timezone == "Europe/Paris"
+        assert config.quiet_hours_enabled is True
 
     def test_update_ignores_protected_fields(self, tmp_dir):
         cfg = UserConfigStorage(tmp_dir / "config.json", user_id="123")
@@ -119,11 +130,31 @@ class TestUserConfigStorage:
 
     def test_reset_to_defaults(self, tmp_dir):
         cfg = UserConfigStorage(tmp_dir / "config.json", user_id="123")
-        cfg.update_config(model="changed")
+        cfg.update_config(model="changed", timezone="Europe/Paris", quiet_hours_enabled=True)
         cfg.reset_to_defaults()
 
         config = cfg.get_config()
         assert config.model != "changed"
+        assert config.timezone == "UTC"
+        assert config.quiet_hours_enabled is False
+
+    def test_get_config_merges_new_defaults(self, tmp_dir):
+        file_path = tmp_dir / "config.json"
+        file_path.write_text(json.dumps({
+            "user_id": "123",
+            "model": "opus",
+            "heartbeat_enabled": True,
+            "heartbeat_interval_minutes": 15,
+            "max_context_messages": 50,
+            "created_at": "",
+            "updated_at": "",
+        }))
+
+        cfg = UserConfigStorage(file_path, user_id="123")
+        config = cfg.get_config()
+
+        assert config.timezone == "UTC"
+        assert config.quiet_hours_enabled is False
 
 
 # ---- UserStorageManager ----

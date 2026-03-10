@@ -6,6 +6,13 @@ from . import usage_tracker
 from . import config
 from . import claude
 from .storage import get_user_storage
+from .time_utils import (
+    get_local_now,
+    is_valid_timezone,
+    is_within_quiet_hours,
+    next_quiet_hours_end,
+    parse_hhmm,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +29,10 @@ async def handle_command(command: str, telegram_bot, user_id: str) -> bool:
     Returns:
         True if command was handled, False if invalid command
     """
-    command_lower = command.strip().lower()
-
     # Split into command and arguments
-    parts = command_lower.split(maxsplit=1)
-    cmd = parts[0]
+    command = command.strip()
+    parts = command.split(maxsplit=1)
+    cmd = parts[0].lower()
     args = parts[1] if len(parts) > 1 else ""
 
     if cmd == "status":
@@ -39,6 +45,10 @@ async def handle_command(command: str, telegram_bot, user_id: str) -> bool:
 
     elif cmd == "heartbeat":
         await handle_heartbeat(args, telegram_bot, user_id)
+        return True
+
+    elif cmd == "quiethours":
+        await handle_quiet_hours(args, telegram_bot, user_id)
         return True
 
     elif cmd == "help":
@@ -246,6 +256,17 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
                     response += f"Next run: {status['next_run']}\n"
                 else:
                     response += "Next run: Not scheduled\n"
+                if user_config.quiet_hours_enabled:
+                    response += (
+                        f"Quiet hours: {user_config.quiet_hours_start}-{user_config.quiet_hours_end} "
+                        f"({user_config.timezone})\n"
+                    )
+                    response += (
+                        f"Quiet hours active now: "
+                        f"{'Yes' if status.get('quiet_hours_active_now') else 'No'}\n"
+                    )
+                else:
+                    response += "Quiet hours: Disabled\n"
             except Exception as e:
                 logger.error(f"Error getting heartbeat status for user {user_id}: {e}")
                 response = f"Error getting status: {e}"
@@ -275,11 +296,12 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
             # Update scheduler for this user
             app = get_instance()
             if app and app.scheduler:
+                enabled = user_storage.config.get_config().heartbeat_enabled
                 app.scheduler.remove_user(user_id)
                 app.scheduler.add_user(
                     user_id=user_id,
                     interval_minutes=minutes,
-                    enabled=True
+                    enabled=enabled
                 )
                 response = f"Heartbeat interval changed to {minutes} minutes\n\nScheduler updated."
                 logger.info(f"User {user_id} heartbeat interval changed to {minutes} minutes")
@@ -302,6 +324,97 @@ async def handle_heartbeat(args: str, telegram_bot, user_id: str) -> None:
         await telegram_bot.send_message(response, chat_id=int(user_id))
 
 
+def _format_quiet_hours_status(user_config) -> str:
+    """Build a consistent quiet-hours status block."""
+    local_now = get_local_now(user_config.timezone)
+    response = "Quiet Hours Status\n\n"
+    response += f"State: {'Enabled' if user_config.quiet_hours_enabled else 'Disabled'}\n"
+    response += f"Timezone: {user_config.timezone}\n"
+    response += f"Window: {user_config.quiet_hours_start} - {user_config.quiet_hours_end}\n"
+    response += f"Local time now: {local_now.strftime('%Y-%m-%d %H:%M %Z')}\n"
+    if user_config.quiet_hours_enabled:
+        response += f"Active now: {'Yes' if is_within_quiet_hours(user_config) else 'No'}\n"
+        quiet_end = next_quiet_hours_end(user_config)
+        if quiet_end is not None:
+            response += f"Heartbeats resume: {quiet_end.strftime('%Y-%m-%d %H:%M %Z')}\n"
+    return response
+
+
+async def handle_quiet_hours(args: str, telegram_bot, user_id: str) -> None:
+    """Handle the ...quiethours command family."""
+    user_storage = get_user_storage(user_id)
+    user_config = user_storage.config.get_config()
+    parts = args.split()
+    subcommand = parts[0].lower() if parts else "status"
+
+    if subcommand == "status":
+        response = _format_quiet_hours_status(user_config)
+
+    elif subcommand == "on":
+        if not is_valid_timezone(user_config.timezone):
+            response = "Quiet hours cannot be enabled until you set a valid timezone.\n\nExample: ...quiethours timezone Europe/Paris"
+        else:
+            try:
+                parse_hhmm(user_config.quiet_hours_start)
+                parse_hhmm(user_config.quiet_hours_end)
+                if user_config.quiet_hours_start == user_config.quiet_hours_end:
+                    raise ValueError
+                user_storage.config.update_config(quiet_hours_enabled=True)
+                user_config = user_storage.config.get_config()
+                response = _format_quiet_hours_status(user_config)
+            except ValueError:
+                response = "Quiet hours cannot be enabled until the window is valid.\n\nExample: ...quiethours set 22:00 08:00"
+
+    elif subcommand == "off":
+        user_storage.config.update_config(quiet_hours_enabled=False)
+        user_config = user_storage.config.get_config()
+        response = _format_quiet_hours_status(user_config)
+
+    elif subcommand == "set":
+        if len(parts) != 3:
+            response = "Usage: ...quiethours set <HH:MM> <HH:MM>\n\nExample: ...quiethours set 22:00 08:00"
+        else:
+            start, end = parts[1], parts[2]
+            try:
+                parse_hhmm(start)
+                parse_hhmm(end)
+                if start == end:
+                    raise ValueError("equal")
+                user_storage.config.update_config(
+                    quiet_hours_start=start,
+                    quiet_hours_end=end,
+                )
+                user_config = user_storage.config.get_config()
+                response = _format_quiet_hours_status(user_config)
+            except ValueError:
+                response = "Invalid quiet-hours window. Use 24-hour HH:MM values and make start and end different."
+
+    elif subcommand == "timezone":
+        if len(parts) == 1:
+            response = f"Current timezone: {user_config.timezone}\n\nExample: ...quiethours timezone Europe/Paris"
+        else:
+            timezone_name = parts[1]
+            if not is_valid_timezone(timezone_name):
+                response = (
+                    f"Invalid timezone: {timezone_name}\n\n"
+                    "Use an IANA timezone such as Europe/Paris or America/New_York."
+                )
+            else:
+                user_storage.config.update_config(timezone=timezone_name)
+                user_config = user_storage.config.get_config()
+                response = _format_quiet_hours_status(user_config)
+
+    else:
+        response = "Unknown quiethours command\n\nAvailable:\n"
+        response += "• ...quiethours status - Show quiet-hours status\n"
+        response += "• ...quiethours on - Enable quiet hours\n"
+        response += "• ...quiethours off - Disable quiet hours\n"
+        response += "• ...quiethours set <HH:MM> <HH:MM> - Set quiet window\n"
+        response += "• ...quiethours timezone <Area/City> - Set timezone"
+
+    await telegram_bot.send_message(response, chat_id=int(user_id))
+
+
 async def handle_help(telegram_bot, user_id: str) -> None:
     """Handle the ...help command."""
     help_text = """Available Commands
@@ -320,6 +433,10 @@ Heartbeat Control
 • ...heartbeat off - Disable automatic heartbeats
 • ...heartbeat status - Show heartbeat status
 • ...heartbeat interval <minutes> - Change interval
+• ...quiethours status - Show quiet-hours status
+• ...quiethours on/off - Enable or disable quiet hours
+• ...quiethours set <HH:MM> <HH:MM> - Set quiet-hours window
+• ...quiethours timezone <Area/City> - Set quiet-hours timezone
 
 Conversation
 • ...clear - Clear conversation history

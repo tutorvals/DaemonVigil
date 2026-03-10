@@ -1,7 +1,7 @@
 """Scheduler for heartbeat checks - Multi-user support."""
 import logging
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from typing import Dict
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -9,6 +9,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 from . import config
 from . import claude
 from .storage import get_user_storage, get_user_registry
+from .time_utils import get_local_now, is_within_quiet_hours, next_quiet_hours_end
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class MultiUserHeartbeatScheduler:
         try:
             logger.info("=" * 50)
             logger.info(f"HEARTBEAT TRIGGERED for user {user_id}")
-            logger.info(f"Time: {datetime.utcnow().isoformat()}")
+            logger.info(f"Time: {datetime.now(timezone.utc).isoformat()}")
             logger.info("=" * 50)
 
             # Check if enabled for this user
@@ -53,6 +54,21 @@ class MultiUserHeartbeatScheduler:
             # Get user-specific storage and config
             user_storage = get_user_storage(user_id)
             user_config = user_storage.config.get_config()
+
+            if is_within_quiet_hours(user_config):
+                local_now = get_local_now(user_config.timezone)
+                quiet_end = next_quiet_hours_end(user_config)
+                quiet_end_text = quiet_end.strftime("%Y-%m-%d %H:%M %Z") if quiet_end else "unknown"
+                logger.info(
+                    "Heartbeat suppressed for user %s during quiet hours "
+                    "(local=%s, quiet window=%s-%s, resumes=%s)",
+                    user_id,
+                    local_now.strftime("%Y-%m-%d %H:%M %Z"),
+                    user_config.quiet_hours_start,
+                    user_config.quiet_hours_end,
+                    quiet_end_text,
+                )
+                return
 
             # Process heartbeat with user context
             await claude.process_heartbeat(
@@ -140,12 +156,20 @@ class MultiUserHeartbeatScheduler:
         """Get scheduler status for a specific user."""
         job_id = f"heartbeat_{user_id}"
         job = self.scheduler.get_job(job_id)
+        user_storage = get_user_storage(user_id)
+        user_config = user_storage.config.get_config()
 
         return {
             "enabled": self.is_enabled(user_id),
             "next_run": getattr(job, 'next_run_time', None) if job else None,
-            "interval_minutes": config.get_heartbeat_interval(),
-            "job_exists": job is not None
+            "interval_minutes": user_config.heartbeat_interval_minutes,
+            "job_exists": job is not None,
+            "quiet_hours_enabled": user_config.quiet_hours_enabled,
+            "quiet_hours_active_now": is_within_quiet_hours(user_config),
+            "quiet_hours_timezone": user_config.timezone,
+            "quiet_hours_start": user_config.quiet_hours_start,
+            "quiet_hours_end": user_config.quiet_hours_end,
+            "quiet_hours_resume_at": next_quiet_hours_end(user_config),
         }
 
     def start(self):

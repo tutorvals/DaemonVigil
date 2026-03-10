@@ -5,7 +5,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 from claude_agent_sdk import ClaudeAgentOptions, query
 
@@ -56,7 +56,7 @@ def format_timestamp(iso_timestamp: str) -> str:
 
 def get_current_time_str() -> str:
     """Get current time as formatted string."""
-    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
 def _extract_text_from_sdk_message(message) -> str:
