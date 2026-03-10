@@ -102,7 +102,38 @@ def _build_sdk_env() -> dict[str, str]:
     env = os.environ.copy()
     env.pop("ANTHROPIC_API_KEY", None)
     env.pop("ANTHROPIC_AUTH_TOKEN", None)
+    env.pop("CLAUDE_CODE", None)
+    env.pop("CLAUDECODE", None)
+    env.pop("CLAUDE_CODE_ENTRYPOINT", None)
+    env.pop("CLAUDE_TTY", None)
     return env
+
+
+def _summarize_sdk_env(env: dict[str, str]) -> dict:
+    """Return a safe summary of Claude-relevant environment variables."""
+    keys_to_log = [
+        "HOME",
+        "PATH",
+        "SHELL",
+        "USER",
+        "PWD",
+        "XDG_CONFIG_HOME",
+        "XDG_CACHE_HOME",
+        "XDG_STATE_HOME",
+        "CLAUDE_CONFIG_DIR",
+        "CLAUDE_CODE_USE_BEDROCK",
+        "CLAUDE_CODE_USE_VERTEX",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+    ]
+    summary = {key: env.get(key) for key in keys_to_log}
+
+    for key in sorted(env):
+        if key.startswith(("CLAUDE", "ANTHROPIC")):
+            summary[f"{key}_present"] = bool(env.get(key))
+
+    return summary
 
 
 def _summarize_sdk_message(message) -> dict:
@@ -233,14 +264,7 @@ async def _run_claude_sdk(
             "max_turns": 1,
             "extra_args": {"no-session-persistence": None},
             "has_output_format": output_format is not None,
-            "env": {
-                "HOME": os.environ.get("HOME"),
-                "PATH": os.environ.get("PATH"),
-                "CLAUDE_CONFIG_DIR": os.environ.get("CLAUDE_CONFIG_DIR"),
-                "ANTHROPIC_API_KEY_present": bool(sdk_env.get("ANTHROPIC_API_KEY")),
-                "ANTHROPIC_AUTH_TOKEN_present": bool(sdk_env.get("ANTHROPIC_AUTH_TOKEN")),
-                "CLAUDE_CODE_OAUTH_TOKEN_present": bool(sdk_env.get("CLAUDE_CODE_OAUTH_TOKEN")),
-            },
+            "env": _summarize_sdk_env(sdk_env),
         },
     )
 
