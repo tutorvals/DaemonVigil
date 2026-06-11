@@ -15,26 +15,6 @@ from .storage import UserStorageManager, UserConfig
 logger = logging.getLogger(__name__)
 CLAUDE_CLI_PATH = Path.home() / ".local" / "bin" / "claude"
 
-# JSON schema for heartbeat structured output
-HEARTBEAT_SCHEMA = json.dumps({
-    "type": "object",
-    "properties": {
-        "action": {
-            "type": "string",
-            "enum": ["send_message", "stay_silent"]
-        },
-        "message": {
-            "type": "string",
-            "description": "Message to send if action is send_message"
-        },
-        "reasoning": {
-            "type": "string",
-            "description": "Brief reasoning for the decision"
-        }
-    },
-    "required": ["action", "reasoning"]
-})
-
 
 def format_timestamp(iso_timestamp: str) -> str:
     """
@@ -286,6 +266,25 @@ def _heartbeat_decision_missing(decision: dict) -> bool:
     )
 
 
+def _build_heartbeat_json_prompt(current_time: str, retry: bool = False) -> str:
+    """Build the heartbeat prompt that asks Claude to emit plain JSON only."""
+    prompt = (
+        f"[{current_time}] This is a heartbeat check. Review the conversation history and "
+        "your notes. Decide whether to reach out to the user or stay silent.\n\n"
+        "Return ONLY a valid JSON object with keys: "
+        "\"action\" (send_message or stay_silent), "
+        "\"reasoning\" (short string), "
+        "\"message\" (required only if action is send_message)."
+    )
+
+    if retry:
+        prompt += (
+            "\nDo not include markdown fences, commentary, or any text before or after the JSON object."
+        )
+
+    return prompt
+
+
 def load_system_prompt() -> str:
     """Load the system prompt from prompts/system.md."""
     prompt_file = config.ROOT_DIR / "prompts" / "system.md"
@@ -366,7 +365,7 @@ async def process_heartbeat(
     system_prompt = load_system_prompt()
     full_system_prompt = f"{system_prompt}\n\n{context}"
 
-    prompt = f"[{current_time}] This is a heartbeat check. Review the conversation history and your notes. Decide whether to reach out to the user or stay silent."
+    prompt = _build_heartbeat_json_prompt(current_time)
 
     logger.debug(f"Heartbeat context for user {user_id}: "
                  f"{len(recent_messages)} messages, {len(notes)} notes, "
@@ -408,38 +407,32 @@ async def process_heartbeat(
             return sdk_response
 
         sdk_response = await run_heartbeat_attempt(
-            attempt_name="structured",
+            attempt_name="plain_json_primary",
             attempt_prompt=prompt,
-            attempt_schema=HEARTBEAT_SCHEMA,
+            attempt_schema=None,
         )
 
         decision = _parse_heartbeat_decision(sdk_response)
         if _heartbeat_decision_missing(decision):
             logger.warning(
-                "Heartbeat structured-output decision missing for user %s, retrying with plain JSON: %s",
+                "Heartbeat JSON decision missing for user %s, retrying with stricter JSON prompt: %s",
                 user_id,
                 decision["reasoning"],
             )
-            fallback_prompt = (
-                f"{prompt}\n\n"
-                "Return ONLY a valid JSON object with keys: "
-                "\"action\" (send_message or stay_silent), "
-                "\"reasoning\" (short string), "
-                "\"message\" (required only if action is send_message)."
-            )
+            fallback_prompt = _build_heartbeat_json_prompt(current_time, retry=True)
             fallback_response = await run_heartbeat_attempt(
-                attempt_name="plain_json_retry",
+                attempt_name="plain_json_strict_retry",
                 attempt_prompt=fallback_prompt,
                 attempt_schema=None,
             )
             fallback_decision = _parse_heartbeat_decision(fallback_response)
             if not _heartbeat_decision_missing(fallback_decision):
-                logger.info("Heartbeat plain-JSON retry succeeded for user %s", user_id)
+                logger.info("Heartbeat strict JSON retry succeeded for user %s", user_id)
                 sdk_response = fallback_response
                 decision = fallback_decision
             else:
                 logger.warning(
-                    "Heartbeat plain-JSON retry still missing/invalid for user %s: %s",
+                    "Heartbeat strict JSON retry still missing/invalid for user %s: %s",
                     user_id,
                     fallback_decision["reasoning"],
                 )
