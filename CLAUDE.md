@@ -34,16 +34,16 @@ If asked to summarize what is currently in the context window, explicitly includ
 - Global user registry: `data/users.json`
 - Migrate existing single-user data: `python scripts/migrate_to_multi_user.py`
 
-## Deployment (VPS: vals@77.42.16.53)
+## Deployment (VPS: vals@167.233.85.125)
 
 Remote path: `~/daemonVigil`
 Origin: `git@github.com:tutorvals/DaemonVigil.git`
 
 ### Deploy steps (from local)
 1. Push: `git push` (from local daemonVigil/)
-2. Pull on VPS: `ssh vals@77.42.16.53 "cd ~/daemonVigil && git pull"`
-3. Stop: `ssh vals@77.42.16.53 "cd ~/daemonVigil && bash stop.sh"`
-4. Start: `ssh vals@77.42.16.53 "cd ~/daemonVigil && bash start.sh"`
+2. Pull on VPS: `ssh vals@167.233.85.125 "cd ~/daemonVigil && git pull"`
+3. Stop: `ssh vals@167.233.85.125 "cd ~/daemonVigil && bash stop.sh"`
+4. Start: `ssh vals@167.233.85.125 "cd ~/daemonVigil && bash start.sh"`
 
 ### Quick full deploy
 Push, pull, restart in sequence.
