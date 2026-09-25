@@ -8,8 +8,8 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=%h/daemonVigil/venv/bin/python main.py --silent
 Restart=always
 RestartSec=10
-StandardOutput=append:%h/daemonVigil/daemon_vigil.log
-StandardError=inherit
+# main.py already writes daemon_vigil.log itself; console output (incl. crash
+# tracebacks) goes to the journal: journalctl --user -u daemon-vigil
 
 [Install]
 WantedBy=default.target
