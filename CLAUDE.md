@@ -11,8 +11,9 @@ A proactive AI companion that checks in via Telegram. Runs on a heartbeat — pe
 ## Commands
 - `python main.py` — run in foreground
 - `python main.py --silent` — run without startup/shutdown messages
-- `bash start.sh` — start in background (writes PID to `.daemon_vigil.pid`)
-- `bash stop.sh` — stop background process
+- `bash start.sh` — (re)start as systemd user service `daemon-vigil.service` (unit in `systemd/`; auto-restarts, starts at boot via linger)
+- `bash stop.sh` — stop the service
+- `systemctl --user status daemon-vigil` — check it; logs go to `daemon_vigil.log`
 
 ## Key Files
 - `main.py` — entry point

@@ -1,40 +1,25 @@
 #!/usr/bin/env bash
-# Start Daemon Vigil in the background
+# (Re)start Daemon Vigil as a systemd user service (auto-restarts, survives reboots with linger)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
+UNIT=daemon-vigil.service
 
-# Stop an existing tracked process if present.
+# One-time migration: stop a legacy nohup process tracked by the old pid file.
 if [ -f ".daemon_vigil.pid" ]; then
     OLD_PID="$(cat .daemon_vigil.pid)"
-    if kill -0 "$OLD_PID" 2>/dev/null; then
-        echo "Stopping existing Daemon Vigil process (PID: $OLD_PID)..."
-        kill "$OLD_PID" || true
-        sleep 1
-    fi
+    kill "$OLD_PID" 2>/dev/null && echo "Stopped legacy process (PID: $OLD_PID)" || true
     rm -f .daemon_vigil.pid
+    sleep 1
 fi
 
-# Best-effort cleanup for stray Daemon Vigil processes not tracked by the pid file.
-pkill -f "/home/.*/daemonVigil/venv/bin/python main.py --silent" 2>/dev/null || true
-pkill -f "python main.py --silent" 2>/dev/null || true
-sleep 1
+systemctl --user enable "$SCRIPT_DIR/systemd/$UNIT" >/dev/null 2>&1 || true
+systemctl --user daemon-reload
+systemctl --user restart "$UNIT"
+systemctl --user --no-pager status "$UNIT" | head -3
 
-# Activate venv if it exists
-if [ -f "venv/bin/activate" ]; then
-    source venv/bin/activate
+if [ "$(loginctl show-user "$USER" -p Linger --value)" != "yes" ]; then
+    echo "WARNING: linger is off, service won't start at boot. Fix: sudo loginctl enable-linger $USER"
 fi
-
-PYTHON_BIN="python"
-if [ -x "venv/bin/python" ]; then
-    PYTHON_BIN="$SCRIPT_DIR/venv/bin/python"
-fi
-
-echo "Starting Daemon Vigil..."
-nohup "$PYTHON_BIN" main.py --silent > daemon_vigil.log 2>&1 &
-PID=$!
-echo "$PID" > .daemon_vigil.pid
-echo "Daemon Vigil started (PID: $PID)"
 echo "Logs: tail -f $SCRIPT_DIR/daemon_vigil.log"
-echo "Stop:  kill $PID"

@@ -1,0 +1,15 @@
+[Unit]
+Description=Daemon Vigil (Telegram <-> Claude agent)
+
+[Service]
+WorkingDirectory=%h/daemonVigil
+Environment=PATH=%h/daemonVigil/venv/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/daemonVigil/venv/bin/python main.py --silent
+Restart=always
+RestartSec=10
+StandardOutput=append:%h/daemonVigil/daemon_vigil.log
+StandardError=inherit
+
+[Install]
+WantedBy=default.target
