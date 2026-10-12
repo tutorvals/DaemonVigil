@@ -56,6 +56,7 @@ allowed = ["caddy.service", "user:discord-bridge.service", "user:pdoom-comments.
 
 [upgrade-thirdparty]
 packages = ["caddy", "nodejs"]
+npm_version = "11.21.0"   # re-installed after a nodejs upgrade, which brings back its bundled npm 10
 
 [sudo-window]
 max_minutes = 60

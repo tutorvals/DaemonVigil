@@ -537,6 +537,11 @@ def act_upgrade_thirdparty(a: dict, c: dict) -> str:
         return "failed: apt-get update: " + clean(r.stderr[-300:])
     r = run(["apt-get", "install", "--only-upgrade", "-y", "-q", *pkgs], timeout=900, env=env)
     tail = clean(r.stdout[-600:], 600)
+    npm = c.get("upgrade-thirdparty", {}).get("npm_version")
+    if r.returncode == 0 and npm and run(["npm", "--version"]).stdout.strip() != npm:
+        # the nodejs package ships its own npm; put back the pinned one (min-release-age needs npm >= 11.10)
+        n = run(["npm", "install", "-g", "--ignore-scripts", f"npm@{npm}"], timeout=300)
+        tail += f" | npm {npm}: " + ("ok" if n.returncode == 0 else "failed " + clean(n.stderr[-200:]))
     return ("done: " if r.returncode == 0 else "failed: ") + tail
 
 
