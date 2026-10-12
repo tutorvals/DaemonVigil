@@ -10,6 +10,8 @@
       "Bash(rm /home/vals/vigil/state/heartbeat-off)",
       "Bash(date)",
       "Bash(ls:*)",
+      "Bash(vigil-request:*)",
+      "Bash(/usr/local/bin/vigil-request:*)",
       "WebSearch",
       "mcp__vigil-bridge__send_to_coordinator",
       "mcp__plugin_telegram_telegram__reply"

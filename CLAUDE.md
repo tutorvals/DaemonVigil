@@ -16,6 +16,7 @@ Read `README.md` first: how the pieces fit, threat model, permissions, install, 
 - `scripts/`: `run-session.sh` (VPS), `sync-context.sh` (laptop -> VPS workflow docs)
 - `laptop/mcp.json`: the laptop-side bridge entry for the land-coordinator
 - `install.sh`: VPS install, no sudo, idempotent
+- `ops/`: root side of the security loop (sensor, action runner with policies and Vals' confirmation codes); installed separately with sudo, see `ops/README.md`
 
 ## Deployment (VPS: vals@167.233.85.125)
 

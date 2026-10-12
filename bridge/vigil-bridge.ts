@@ -76,7 +76,7 @@ function pollSpool() {
     let text: string | null = null
     try {
       const msg = JSON.parse(readFileSync(path, 'utf8'))
-      from = msg.from === 'heartbeat' || msg.from === 'coordinator' ? msg.from : 'unknown'
+      from = ['heartbeat', 'coordinator', 'sensor', 'actions'].includes(msg.from) ? msg.from : 'unknown'
       text = clean(msg.text)
     } catch {}
     renameSync(path, join(dirs.done, name))

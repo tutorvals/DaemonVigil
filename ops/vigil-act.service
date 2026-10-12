@@ -1,0 +1,7 @@
+[Unit]
+Description=vigil-ops: run vigil's queued requests per /etc/vigil/vigil.toml
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vigil-ops act
+TimeoutStartSec=30min

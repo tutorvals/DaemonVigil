@@ -1,0 +1,81 @@
+# /etc/vigil/vigil.toml (root:root 0644). Read by vigil-ops at every run: edits apply at once, no restart.
+# Draft by Claude 2026-10-12 (thread vps-security), TENTATIVE until Vals reviews it.
+
+user = "vals"
+
+# Who decides each action vigil can queue with `vigil-request <action> ...`:
+#   "auto"    runs at once (Vals gets a line from the alarm bot)
+#   "confirm" the alarm bot sends Vals the request, written by this program (not vigil), with a 4-letter code;
+#             it runs only when Vals sends that code to vigil and vigil passes it on (`vigil-request confirm CODE`)
+#   "off"     refused
+# Vals 2026-10-12: the first three auto "for now", easy to change: edit this block.
+[policy]
+block-ip = "auto"
+kill-process = "auto"
+stop-user-unit = "auto"
+stop-service = "confirm"
+upgrade-thirdparty = "auto"   # plan S4: vigil reads the release notes and waits 7 days first
+sudo-window = "confirm"
+unlock-files = "confirm"
+
+[confirm]
+minutes = 10   # a code's lifetime
+tries = 3      # wrong codes before every pending request is cancelled
+
+[block-ip]
+hours = 24
+# Never blocked, on top of: private/loopback addresses, any IP that ever logged in by SSH (learned from the
+# journal), any IP with a live SSH session. Add Vals' fixed IPs here if he has any.
+never = [
+  # Telegram (core.telegram.org/resources/cidr.txt, 2026-10-12)
+  "91.108.56.0/22", "91.108.4.0/22", "91.108.8.0/22", "91.108.16.0/22", "91.108.12.0/22", "149.154.160.0/20",
+  "91.105.192.0/23", "91.108.20.0/22", "185.76.151.0/24", "2001:b28:f23d::/48", "2001:b28:f23f::/48",
+  "2001:67c:4e8::/48", "2001:b28:f23c::/48", "2a0a:f280::/32",
+  # GitHub (api.github.com/meta "git", the ranges only, 2026-10-12)
+  "192.30.252.0/22", "185.199.108.0/22", "140.82.112.0/20", "143.55.64.0/20", "2a0a:a440::/29", "2606:50c0::/32",
+  # Anthropic API (from Claude's knowledge of Anthropic's published IPs; not re-checked 2026-10-12)
+  "160.79.104.0/23", "2607:6bc0::/48",
+  # Hetzner mirror and resolvers (mirror.hetzner.com = 185.12.64.3, 2026-10-12)
+  "185.12.64.0/22",
+]
+
+[kill-process]
+# Only processes of `user` whose binary sits here, is fileless (memfd) or was deleted (outside the system dirs).
+dirs = ["/tmp/", "/dev/shm/", "/var/tmp/"]
+
+[stop-user-unit]
+# Known units: never stopped by the auto action (stop-service with Vals' code can).
+keep = [
+  "vigil-session.service", "vigil-heartbeat.service", "vigil-heartbeat.timer",
+  "discord-bridge.service", "pdoom-comments.service",
+]
+
+[stop-service]
+# "name" = system unit, "user:name" = a unit of `user`.
+allowed = ["caddy.service", "user:discord-bridge.service", "user:pdoom-comments.service", "user:vigil-session.service"]
+
+[upgrade-thirdparty]
+packages = ["caddy", "nodejs"]
+
+[sudo-window]
+max_minutes = 60
+
+[unlock-files]
+# Kept immutable (chattr +i) unless lifted; Vals: `sudo vigil-ops lift unlock-files 15`.
+files = ["/home/vals/.ssh/authorized_keys", "/home/vals/.bashrc", "/home/vals/.profile"]
+max_minutes = 30
+
+[sensor]
+learn_days = 14                       # outbound hosts seen in this window are learned silently
+inbound_ports = ["22", "80", "443"]   # established connections to these are inbound, not outbound
+deleted_ok = ["/usr/", "/opt/", "/snap/", "/home/vals/.local/share/claude/versions/", "/home/vals/.bun/bin/"]
+watch_high = [
+  "/home/vals/.ssh/authorized_keys", "/root/.ssh/authorized_keys", "/etc/sudoers", "/etc/sudoers.d",
+  "/etc/ssh/sshd_config", "/etc/ssh/sshd_config.d", "/etc/passwd", "/etc/shadow", "/etc/group",
+]
+watch_medium = [
+  "/etc/crontab", "/etc/cron.d", "/var/spool/cron/crontabs", "/etc/systemd/system", "/home/vals/.config/systemd/user",
+  "/home/vals/.bashrc", "/home/vals/.profile", "/home/vals/.claude/settings.json", "/home/vals/.claude/hooks",
+  "/home/vals/vigil/.claude", "/home/vals/.npmrc", "/home/vals/.bunfig.toml", "/etc/apt/sources.list.d",
+  "/etc/caddy/Caddyfile",
+]

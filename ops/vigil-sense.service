@@ -1,0 +1,9 @@
+[Unit]
+Description=vigil-ops sensor run (security events for vigil; re-applies guards)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/vigil-ops sense
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=120

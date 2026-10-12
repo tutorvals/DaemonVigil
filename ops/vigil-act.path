@@ -1,0 +1,8 @@
+[Unit]
+Description=Run vigil-ops when vigil queues a request
+
+[Path]
+PathExistsGlob=/var/lib/vigil/requests/*.json
+
+[Install]
+WantedBy=paths.target

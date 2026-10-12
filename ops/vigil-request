@@ -1,0 +1,40 @@
+#!/usr/bin/python3 -I
+"""vigil-request: queue an action for vigil-ops (runs as vals; root validates and decides, see README.md).
+
+  vigil-request block-ip IP REASON
+  vigil-request kill-process PID REASON
+  vigil-request stop-user-unit UNIT REASON
+  vigil-request stop-service NAME REASON      (NAME as in stop-service.allowed, e.g. user:discord-bridge.service)
+  vigil-request upgrade-thirdparty REASON
+  vigil-request sudo-window MINUTES REASON
+  vigil-request unlock-files MINUTES REASON
+  vigil-request confirm CODE                  (the word Vals sent you)
+
+The result arrives in the session as a vigil-bridge event from "actions" (usually within seconds).
+"""
+import json
+import os
+import secrets
+import sys
+import time
+
+REQ_DIR = "/var/lib/vigil/requests"
+ARG = {"block-ip": "ip", "kill-process": "pid", "stop-user-unit": "unit", "stop-service": "service",
+       "sudo-window": "minutes", "unlock-files": "minutes", "confirm": "code", "upgrade-thirdparty": None}
+
+if len(sys.argv) < 2 or sys.argv[1] not in ARG:
+    sys.exit(__doc__)
+action, rest = sys.argv[1], sys.argv[2:]
+key = ARG[action]
+args = {}
+if key:
+    if not rest:
+        sys.exit(f"{action} needs a {key}")
+    args[key] = rest.pop(0)
+req = {"action": action, "args": args, "reason": " ".join(rest)[:500]}
+name = f"{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(3)}"
+tmp = os.path.join(REQ_DIR, f".{name}.tmp")
+with open(tmp, "x") as f:
+    json.dump(req, f)
+os.rename(tmp, os.path.join(REQ_DIR, f"{name}.json"))
+print(f"queued {name}; the result arrives as a vigil-bridge event from 'actions'")
