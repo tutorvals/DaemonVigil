@@ -1,0 +1,14 @@
+[Unit]
+Description=Vigil: persistent Claude Code session in tmux (Telegram channel + vigil-bridge)
+
+[Service]
+Type=forking
+WorkingDirectory=%h/vigil
+Environment=PATH=%h/.local/bin:%h/.bun/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/tmux new-session -d -s vigil -c %h/vigil %h/daemonVigil/v2/scripts/run-session.sh
+ExecStop=/usr/bin/tmux kill-session -t vigil
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,46 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Edit(/memory/**)",
+      "Edit(/notes/**)",
+      "Edit(/scratch/**)",
+      "Write(/memory/**)",
+      "Write(/notes/**)",
+      "Write(/scratch/**)",
+      "Bash(touch /home/vals/vigil/state/heartbeat-off)",
+      "Bash(rm /home/vals/vigil/state/heartbeat-off)",
+      "Bash(date:*)",
+      "Bash(ls:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "WebSearch",
+      "WebFetch",
+      "mcp__vigil-bridge__send_to_coordinator",
+      "mcp__plugin_telegram_telegram__reply"
+    ],
+    "deny": [
+      "Bash(sudo:*)",
+      "Bash(su:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(ssh-keygen:*)",
+      "Bash(crontab:*)",
+      "Bash(passwd:*)",
+      "Read(~/.ssh/**)",
+      "Edit(~/.ssh/**)",
+      "Read(~/.claude/.credentials.json)",
+      "Read(~/.claude/channels/**/.env)",
+      "Read(**/.env)",
+      "Read(**/*.env)",
+      "Edit(~/.claude/**)",
+      "Edit(/.claude/**)",
+      "Edit(/.mcp.json)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.profile)",
+      "Edit(~/.config/systemd/**)",
+      "Edit(~/daemonVigil/v2/bridge/**)"
+    ]
+  }
+}
