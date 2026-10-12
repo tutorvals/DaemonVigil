@@ -8,7 +8,13 @@ VIGIL="$HOME/vigil"
 BUN_VERSION="1.4.2"
 
 if ! [ -x "$HOME/.bun/bin/bun" ]; then
-  curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
+  # Release zip unpacked with Python (the official installer needs unzip, which needs sudo; it also edits .bashrc)
+  tmp=$(mktemp -d)
+  curl -fsSL -o "$tmp/bun.zip" "https://github.com/oven-sh/bun/releases/download/bun-v$BUN_VERSION/bun-linux-x64.zip"
+  python3 -m zipfile -e "$tmp/bun.zip" "$tmp"
+  mkdir -p "$HOME/.bun/bin"
+  install -m 755 "$tmp/bun-linux-x64/bun" "$HOME/.bun/bin/bun"
+  rm -rf "$tmp"
 fi
 (cd "$V2/bridge" && "$HOME/.bun/bin/bun" install --frozen-lockfile)
 

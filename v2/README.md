@@ -56,7 +56,7 @@ Bash sandbox (bubblewrap, needs `sudo apt install bubblewrap socat`) would make 
 
 ## Go live (live ops, each step needs Vals' OK)
 
-1. `git pull` on the VPS, `bash v2/install.sh` (no sudo; installs Bun 1.4.2, links units, starts nothing).
+1. `git pull` on the VPS, `bash v2/install.sh` (no sudo; installs Bun 1.4.2 in ~/.bun/bin, links units, starts nothing).
 2. Vals by hand: BotFather token (new bot, v1 keeps its own), then in `tmux new -s vigil` from `~/vigil`:
    `claude`, `/plugin install telegram@claude-plugins-official`, `/telegram:configure <token>`, exit; start with
    `scripts/run-session.sh`, confirm the development-channel dialog and the `.mcp.json` server, DM the bot,
