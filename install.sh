@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # VPS-side install, no sudo. Idempotent. Run from ~/daemonVigil after git pull: bash install.sh
 # Does: Bun (pinned) in ~/.bun, bridge deps, ~/vigil workspace (symlinked config), systemd user units linked.
-# Does NOT enable or start anything: see README "Go live".
+# Does NOT enable or start anything: see README "Install and go live".
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"  # repo root
 VIGIL="$HOME/vigil"
@@ -30,4 +30,4 @@ for u in vigil-session.service vigil-heartbeat.service vigil-heartbeat.timer; do
   ln -sfn "$ROOT/systemd/$u" "$HOME/.config/systemd/user/$u"
 done
 systemctl --user daemon-reload
-echo "Installed. Not started. Next: README 'Go live'."
+echo "Installed. Not started. Next: README 'Install and go live'."
