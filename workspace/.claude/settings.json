@@ -5,6 +5,7 @@
       "Edit(/memory/**)",
       "Edit(/notes/**)",
       "Edit(/scratch/**)",
+      "Edit(/heartbeat.env)",
       "Bash(touch /home/vals/vigil/state/heartbeat-off)",
       "Bash(rm /home/vals/vigil/state/heartbeat-off)",
       "Bash(date)",
@@ -34,7 +35,6 @@
       "Edit(~/.profile)",
       "Edit(~/.config/systemd/**)",
       "Edit(~/daemonVigil/**)",
-      "Edit(~/vigil/heartbeat.env)",
       "Edit(/CLAUDE.md)"
     ]
   }

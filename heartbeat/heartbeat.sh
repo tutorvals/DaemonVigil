@@ -4,7 +4,7 @@
 # Off switch: touch ~/vigil/state/heartbeat-off (the agent may do this when Vals asks).
 set -euo pipefail
 VIGIL="${VIGIL_HOME:-$HOME/vigil}"
-VIGIL_TZ=Europe/Paris QUIET_START=23 QUIET_END=8
+VIGIL_TZ=Europe/Paris QUIET_START=1 QUIET_END=11
 # Parsed, never sourced: only these three keys, only safe values (the file must not become code execution).
 if [ -f "$VIGIL/heartbeat.env" ]; then
   while IFS='=' read -r key value; do

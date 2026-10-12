@@ -1,223 +1,80 @@
-# Daemon Vigil
+# DaemonVigil v2 (Vigil)
 
-Daemon Vigil is a proactive Telegram companion backed by Claude. Instead of waiting for commands, it runs on a heartbeat, reviews recent context for each user, and decides whether to send a check-in or stay silent.
+Asked for (Vals, 2026-10-12): rebuild DaemonVigil as an always-on Claude Code on the VPS, reached through
+Telegram, proactive, aware of how Vals works, able to talk to the laptop land-coordinator through a dedicated
+bridge that carries only session-to-session messages. Runs as the existing user `vals` (Vals, 2026-10-12).
+Design and code: Claude, 2026-10-12; Vals approved the plan 2026-10-12. v1 (Python bot, 2025-2026) is in
+`archive/v1/`, stopped on the VPS 2026-10-12; its data was copied to `~/vigil/memory/archive/v1-data/`.
 
-## What It Does
+## How the pieces fit
 
-- Receives Telegram messages and replies through Claude
-- Runs scheduled per-user heartbeat checks
-- Stores per-user conversation history, scratchpad notes, and preferences
-- Supports per-user model selection, heartbeat interval, timezone, and quiet hours
-
-## Architecture Summary
-
-- `main.py`: application entrypoint
-- `src/telegram_bot.py`: Telegram polling and inbound message handling
-- `src/claude.py`: Claude Agent SDK integration using local Claude Code auth
-- `src/scheduler.py`: per-user APScheduler heartbeat jobs
-- `src/storage.py`: JSON-backed user registry and per-user storage
-- `src/commands.py`: Telegram `...` command handlers
-- `data/users/<user_id>/`: per-user messages, scratchpad, and config
-- `data/users.json`: user registry
-
-## Prerequisites
-
-- Python 3.10+ recommended
-- A Telegram bot token from `@BotFather`
-- Claude Code installed locally and already authenticated
-- A Unix-like environment if you want to use `start.sh` and `stop.sh`
-
-This project does not use an Anthropic API key in normal operation. It calls Claude through `claude-agent-sdk`, which in turn relies on your local Claude Code login.
-
-## Quickstart
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/tutorvals/DaemonVigil.git
-cd DaemonVigil
+```
+Vals' phone ──Telegram──> [official telegram channel plugin] ─┐
+                                                               ├─> claude session "vigil" (tmux, ~/vigil, VPS)
+heartbeat timer ─> ~/vigil/spool/inbox ─> [vigil-bridge, vps] ─┘        │ send_to_coordinator
+                                                                         v
+                                           ~/vigil/spool/outbox <── fetch/put ── ssh (restricted key, forced
+                                                                         command bridge-ssh.py) <── [vigil-bridge,
+                                                                         laptop] inside land-coordinator (laptop)
 ```
 
-### 2. Create and activate a virtual environment
+- `bridge/vigil-bridge.ts`: a Claude Code channel (MCP server over stdio, research preview). Same file both sides,
+  `BRIDGE_MODE=vps|laptop`. VPS: pushes spool files (heartbeat, coordinator) into the session, tool
+  `send_to_coordinator`. Laptop: polls the VPS every 60 s, tool `send_to_vigil`, logs everything to
+  `~/.local/state/vigil-bridge/messages.jsonl`.
+- `bridge/bridge-ssh.py`: forced command for the laptop's bridge key on the VPS; knows only `fetch` and `put`.
+- `heartbeat/`: a systemd timer (30 min, quiet hours 01-11 Europe/Paris, editable in `~/vigil/heartbeat.env`) drops one event in the spool; skipped when
+  the previous one is unread or `~/vigil/state/heartbeat-off` exists.
+- `workspace/`: the session's `CLAUDE.md`, `.mcp.json` and `.claude/settings.json` (symlinked into `~/vigil` by
+  `install.sh`, so `git pull` updates them).
+- `scripts/sync-context.sh` (laptop): copies a snapshot of Vals' workflow docs to `~/vigil/context/`.
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
+## Bridge threat model
 
-### 3. Install dependencies
+Goal: a compromised VPS must not get command execution on the laptop.
+- The laptop only connects out (ssh to the VPS); nothing listens on the laptop. The VPS answers `fetch` with JSON
+  text; the laptop parses it, strips control characters, caps size and pushes it as a labelled channel event.
+- The bridge never declares `claude/channel/permission`, so nothing from the VPS can approve a laptop tool call.
+- Remaining risk: prompt injection of the coordinator (text that tries to talk it into acting). Guarded by the
+  coordinator's rules (agent messages are never Vals' consent) and its own permission prompts. Low but not zero;
+  the received log makes it auditable.
+- SSH client hardening: dedicated key, `StrictHostKeyChecking=yes`, no agent/X11/port forwarding.
+- The bridge key on the VPS is `restrict` + forced command: a stolen laptop key only reaches the spool.
 
-```bash
-pip install -r requirements.txt
-```
+Alternatives considered: a git repo as mailbox (simple, but needs a GitHub write key on the VPS and minutes of
+latency); an HTTPS relay on the VPS behind an SSH tunnel (more code, an open port, same trust result); Remote
+Control (gives the VPS nothing, but it's Vals-to-session, not session-to-session).
 
-### 4. Create `.env`
+## Permissions (`workspace/.claude/settings.json`)
 
-Create a `.env` file in the project root:
+Free: edits in `~/vigil/{memory,notes,scratch}`, web search, `date`, `ls`, the heartbeat on/off file, the two reply
+tools. Everything else prompts (relayed to Telegram as "yes <id>"), including WebFetch (a URL can carry data out).
+Denied: sudo/su/ssh/scp/crontab, reading `~/.ssh`, credentials and `.env` files, editing `~/.claude`, the vigil
+`.claude/`, `.mcp.json`, `CLAUDE.md`, all of `~/daemonVigil/` (the symlink targets, scripts and units),
+`~/vigil/heartbeat.env` (also parsed, never sourced). Path rules use `Edit(...)` only (Claude Code ignores
+`Write(path)` rules). Project allow rules apply only after the workspace trust dialog is accepted (headless test,
+2026-10-12). The VPS only pulls from GitHub; nothing in v2 pushes (audit S3.1: its GitHub key is account-wide).
+Caveat: deny rules bind Claude's tools, not the OS: running as `vals`, an approved Bash command can read the
+`.env` files, the Claude login and the GitHub key. Vals declined the Bash sandbox (2026-10-12: "I trust claudes quite
+a bit these days").
 
-```env
-TELEGRAM_BOT_TOKEN=123456789:ABC...
-TELEGRAM_CHAT_ID=123456789
-```
+## Install and go live
 
-Notes:
+1. VPS: `cd ~/daemonVigil && git pull && bash install.sh` (no sudo; Bun 1.4.2 in `~/.bun/bin`, `~/vigil`, units
+   linked). `systemctl --user enable --now vigil-heartbeat.timer; systemctl --user enable vigil-session`.
+2. Telegram plugin: `claude plugin marketplace add anthropics/claude-plugins-official` and
+   `claude plugin install telegram@claude-plugins-official`. Token in `~/.claude/channels/telegram/.env`
+   (`TELEGRAM_BOT_TOKEN=...`, mode 600).
+3. First start (by hand): `tmux new -s vigil ~/daemonVigil/scripts/run-session.sh`; confirm the
+   trust, development-channel and `.mcp.json` dialogs, then pair: DM the bot, `/telegram:access pair <code>`,
+   `/telegram:access policy allowlist`. Afterwards `systemctl --user start vigil-session` runs it.
+4. Bridge key: laptop `~/.ssh/vigil_bridge`; VPS `~/.ssh/authorized_keys` has
+   `command="python3 /home/vals/daemonVigil/bridge/bridge-ssh.py",restrict <pubkey> vigil-bridge`.
+5. Laptop coordinator (optional, B3): merge `laptop/mcp.json` into `~/claudeCodeLand/.mcp.json` and launch with
+   `claude -n land-coordinator --dangerously-load-development-channels server:vigil-bridge`. Without it, the
+   coordinator can still read vigil's messages: `ssh -i ~/.ssh/vigil_bridge vals@167.233.85.125 fetch`.
 
-- `TELEGRAM_BOT_TOKEN` is required.
-- `TELEGRAM_CHAT_ID` is optional for normal message handling, but useful for startup/shutdown notifications and older single-user workflows.
-- In multi-user mode, any Telegram user who messages the bot is auto-registered.
+## Restarts
 
-### 5. Adjust `config.yaml` if needed
-
-Default config:
-
-```yaml
-claude_model: opus
-heartbeat_interval_minutes: 15
-max_context_messages: 50
-```
-
-These values act as defaults for newly created users. Each user then gets their own `data/users/<user_id>/user_config.json`.
-
-### 6. Make sure Claude Code works locally
-
-Before running the bot, confirm your Claude Code setup is already authenticated on the same machine/account that will run Daemon Vigil.
-
-### 7. Start the bot
-
-Foreground:
-
-```bash
-python main.py
-```
-
-Foreground without startup/shutdown Telegram notifications:
-
-```bash
-python main.py --silent
-```
-
-Background helper script:
-
-```bash
-bash start.sh
-```
-
-Stop the background process:
-
-```bash
-bash stop.sh
-```
-
-### 8. First-run check
-
-1. Send `/start` or any normal message to your bot in Telegram.
-2. Confirm you receive a reply.
-3. Run `...help` and `...heartbeat status`.
-4. Check logs with `tail -f daemon_vigil.log`.
-
-## Telegram Setup Notes
-
-To get a bot token:
-
-1. Open Telegram and message `@BotFather`.
-2. Run `/newbot`.
-3. Copy the token into `.env` as `TELEGRAM_BOT_TOKEN`.
-
-To get your chat ID:
-
-1. Send a message to your bot.
-2. Open `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`.
-3. Find the chat id in the JSON response.
-
-## Runtime Behavior
-
-- The bot uses Telegram long polling, not webhooks.
-- On first message from a new user, that user is auto-registered in [data/users.json](/home/tutorvals/claudeCodeLand/daemonVigil/data/users.json).
-- Each user gets separate files under [data/users](/home/tutorvals/claudeCodeLand/daemonVigil/data/users).
-- Heartbeats are scheduled per active user.
-- Quiet hours suppress scheduled heartbeats, but not direct replies to incoming messages.
-
-## Telegram Commands
-
-All bot commands start with `...`.
-
-### General
-
-- `...help`: show available commands
-- `...status`: show model, heartbeat, and context information
-
-### Model
-
-- `...model`: show current model
-- `...model sonnet`
-- `...model sonnet-4.5`
-- `...model opus`
-- `...model haiku`
-
-### Heartbeats
-
-- `...heartbeat test`: dry-run a heartbeat and show Claude's reasoning
-- `...heartbeat on`: enable scheduled heartbeats
-- `...heartbeat off`: disable scheduled heartbeats
-- `...heartbeat status`: show heartbeat status
-- `...heartbeat interval <minutes>`: set the user's heartbeat interval
-
-### Quiet Hours
-
-- `...quiethours status`
-- `...quiethours on`
-- `...quiethours off`
-- `...quiethours set <HH:MM> <HH:MM>`
-- `...quiethours timezone <Area/City>`
-
-Example:
-
-```text
-...quiethours timezone Europe/Paris
-...quiethours set 22:00 08:00
-...quiethours on
-```
-
-### Conversation State
-
-- `...clear`: clear conversation history only
-- `...showmemory`: show scratchpad notes
-- `...clearmemory`: clear scratchpad notes only
-
-## Data Layout
-
-```text
-daemonVigil/
-├── main.py
-├── config.yaml
-├── .env
-├── daemon_vigil.log
-├── data/
-│   ├── users.json
-│   └── users/
-│       └── <user_id>/
-│           ├── messages.json
-│           ├── scratchpad.json
-│           └── user_config.json
-├── prompts/
-│   └── system.md
-└── src/
-```
-
-## Migration From Older Single-User Storage
-
-If you have an older checkout that stored global `messages.json` and `scratchpad.json`, use:
-
-```bash
-python scripts/migrate_to_multi_user.py
-```
-
-That script expects `TELEGRAM_CHAT_ID` to be present in `.env`.
-
-## Development
-
-Run tests with the project virtualenv:
-
-```bash
-./venv/bin/pytest -q
-```
+The development-channel flag shows a confirmation dialog at every start (research preview). After a reboot or
+crash: `ssh` in, `tmux attach -t vigil`, confirm, detach (`Ctrl-b d`). Vals chose manual confirmation (2026-10-12).

@@ -1,34 +1,12 @@
-# Environment and secrets
+# Secrets
 .env
 *.env
-
-# Data files
-data/
-
-# Logs
-daemon_vigil.log
-*.log
-
-# Python
+# Dependencies, caches
+node_modules/
+venv/
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-ENV/
-build/
-dist/
-*.egg-info/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
+.pytest_cache/
+# v1 runtime data and logs (archive/v1 has its own .gitignore too)
+data/
+*.log

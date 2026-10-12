@@ -3,4 +3,4 @@ Description=Vigil heartbeat (drops one event into the vigil spool)
 
 [Service]
 Type=oneshot
-ExecStart=%h/daemonVigil/v2/heartbeat/heartbeat.sh
+ExecStart=%h/daemonVigil/heartbeat/heartbeat.sh

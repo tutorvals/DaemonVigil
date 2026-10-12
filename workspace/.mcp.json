@@ -2,7 +2,7 @@
   "mcpServers": {
     "vigil-bridge": {
       "command": "/home/vals/.bun/bin/bun",
-      "args": ["/home/vals/daemonVigil/v2/bridge/vigil-bridge.ts"],
+      "args": ["/home/vals/daemonVigil/bridge/vigil-bridge.ts"],
       "env": { "BRIDGE_MODE": "vps" }
     }
   }

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "vigil-bridge": {
+      "command": "bun",
+      "args": ["/home/tutorvals/claudeCodeLand/daemonVigil/bridge/vigil-bridge.ts"],
+      "env": { "BRIDGE_MODE": "laptop" }
+    }
+  }
+}
