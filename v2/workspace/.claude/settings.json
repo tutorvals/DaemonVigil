@@ -5,18 +5,11 @@
       "Edit(/memory/**)",
       "Edit(/notes/**)",
       "Edit(/scratch/**)",
-      "Write(/memory/**)",
-      "Write(/notes/**)",
-      "Write(/scratch/**)",
       "Bash(touch /home/vals/vigil/state/heartbeat-off)",
       "Bash(rm /home/vals/vigil/state/heartbeat-off)",
-      "Bash(date:*)",
+      "Bash(date)",
       "Bash(ls:*)",
-      "Bash(git status:*)",
-      "Bash(git log:*)",
-      "Bash(git diff:*)",
       "WebSearch",
-      "WebFetch",
       "mcp__vigil-bridge__send_to_coordinator",
       "mcp__plugin_telegram_telegram__reply"
     ],
@@ -40,7 +33,9 @@
       "Edit(~/.bashrc)",
       "Edit(~/.profile)",
       "Edit(~/.config/systemd/**)",
-      "Edit(~/daemonVigil/v2/bridge/**)"
+      "Edit(~/daemonVigil/**)",
+      "Edit(~/vigil/heartbeat.env)",
+      "Edit(/CLAUDE.md)"
     ]
   }
 }

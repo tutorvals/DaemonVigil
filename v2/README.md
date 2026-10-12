@@ -47,9 +47,13 @@ Control (gives the VPS nothing, but it's Vals-to-session, not session-to-session
 
 ## Permissions (`workspace/.claude/settings.json`)
 
-Free: edits in `memory/`, `notes/`, `scratch/`, web search/fetch, a few read-only commands, the two reply tools.
-Everything else prompts (relayed to Telegram as "yes <id>"). Denied: sudo/su/ssh/scp/crontab, reading `~/.ssh`,
-credentials and `.env` files, editing its own settings, `~/.claude`, systemd units and the bridge code.
+Free: edits in `~/vigil/{memory,notes,scratch}`, web search, `date`, `ls`, the heartbeat on/off file, the two reply
+tools. Everything else prompts (relayed to Telegram as "yes <id>"), including WebFetch (a URL can carry data out).
+Denied: sudo/su/ssh/scp/crontab, reading `~/.ssh`, credentials and `.env` files, editing `~/.claude`, the vigil
+`.claude/`, `.mcp.json`, `CLAUDE.md`, all of `~/daemonVigil/` (the symlink targets, scripts and units),
+`~/vigil/heartbeat.env` (also parsed, never sourced). Path rules use `Edit(...)` only (Claude Code ignores
+`Write(path)` rules). Project allow rules apply only after the workspace trust dialog is accepted (headless test,
+2026-10-12). The VPS only pulls from GitHub; nothing in v2 pushes (audit S3.1: its GitHub key is account-wide).
 Caveat: deny rules bind Claude's tools, not the OS. Running as `vals` (in the sudo group, password needed; owns v1's
 and discord-bridge's `.env`, the Claude login, the GitHub key), an approved Bash command can read them. Claude Code's
 Bash sandbox (bubblewrap, needs `sudo apt install bubblewrap socat`) would make the file denies real: proposed.
